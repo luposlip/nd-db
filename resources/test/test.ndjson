@@ -1,0 +1,3 @@
+{"id":1, "data": ["some", "semi-random", "data"]}
+{"id":222, "data": 42}
+{"id":333333,"data": {"datakey": "datavalue"}}
