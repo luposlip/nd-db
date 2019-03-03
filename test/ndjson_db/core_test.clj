@@ -33,8 +33,8 @@
            (into []
                  (db/query {:id-fn-key :by-id
                             :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %)))
-                            :filename  "resources/test/test.ndjson"
-                            :ids [333333 1 77]}))))))
+                            :filename  "resources/test/test.ndjson"}
+                           [333333 1 77]))))))
 
 ;; To test with real DB, download all verified Twitter users
 ;; from here:
@@ -52,8 +52,8 @@
                      (re-find #"\"screen_name\":\"(\w+)\"")
                      second
                      clojure.string/lower-case)
-        :filename "resources/TU_verified.ndjson"
-        :ids ["katyperry" "ladygaga" "billgates" "bymikewilson"]}))))
+        :filename "resources/TU_verified.ndjson"}
+       ["katyperry" "ladygaga" "billgates" "bymikewilson"]))))
 
 ;; The extracted .ndjson files is 513 MB (297,878 records).
 ;; 

@@ -47,7 +47,7 @@
 (defn query
   "Queries multiple JSON docs by ids in .ndjson file as database,
   returns EDN for the matching JSON doc."
-  [{:keys [id-fn-key id-fn filename ids]}]
+  [{:keys [id-fn-key id-fn filename]} ids]
   {:pre [(keyword? id-fn-key)
          (fn? id-fn)
          (string? filename)
