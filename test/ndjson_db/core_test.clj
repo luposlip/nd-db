@@ -13,28 +13,50 @@
            (db/ndjson->idx* :by-id 
                             "resources/test/test.ndjson")))))
 
-(deftest query-by-id
+(deftest query-single
   ;; Hack
   (swap! db/id-fns assoc
          :by-id  #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
   (testing ".ndjson file as random access database for single id" 
     (is (= {:id 222
             :data 42}
-           (db/query-single :by-id
-                            "resources/test/test.ndjson"
+           (db/query-single {:id-fn-key  :by-id
+                             :filename 
+                             "resources/test/test.ndjson"}
                             222)))))
 
-(deftest ndjson-query
+(deftest id-key-fn-by-name
+  (testing "Generating map with :id-fn and :id-fn-key from json name"
+    (let [{:keys [id-fn-key id-fn]} (db/id-key-fn-by-name "id" :integer)]
+      (is (= :by-name-id id-fn-key))
+      (is (fn? id-fn)))))
+
+(deftest query
   (testing ".ndjson file as random access database for multiple ids"
-    (is (= [{:id 333333
-             :data {:datakey "datavalue"}}
-            {:id 1
-             :data ["some" "semi-random" "data"]}]
-           (into []
-                 (db/query {:id-fn-key :by-id
-                            :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %)))
-                            :filename  "resources/test/test.ndjson"}
-                           [333333 1 77]))))))
+
+    (testing "using :id-fn-key and :id-fn as params"
+      (is (= [{:id 333333
+               :data {:datakey "datavalue"}}
+              {:id 1
+               :data ["some" "semi-random" "data"]}]
+             (into []
+                   (db/query {:id-fn-key :by-id
+                              :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %)))
+                              :filename  "resources/test/test.ndjson"}
+                             [333333 1 77])))))
+    
+    (testing "using :id-name and :id-type as params"
+      (is (= [{:id 333333
+               :data {:datakey "datavalue"}}
+              {:id 1
+               :data ["some" "semi-random" "data"]}]
+             (into []
+                   (db/query {:id-name "id"
+                              :id-type :integer
+                              :filename  "resources/test/test.ndjson"}
+                             [333333 1 77])))))))
+
+
 
 ;; To test with real DB, download all verified Twitter users
 ;; from here:
@@ -44,16 +66,12 @@
 ;; run the following in a repl:
 ;;
 #_(time 
-   (def katy-gaga-and-gates
+   (def katy-gaga-gates-et-al
      (doall
       (db/query
-       {:id-fn-key :by-screen_name-lowercase
-        :id-fn #(->> %
-                     (re-find #"\"screen_name\":\"(\w+)\"")
-                     second
-                     clojure.string/lower-case)
+       {:id-name "screen_name" 
         :filename "resources/TU_verified.ndjson"}
-       ["katyperry" "ladygaga" "billgates" "bymikewilson"]))))
+       ["katyperry" "ladygaga" "BillGates" "ByMikeWilson"]))))
 
 ;; The extracted .ndjson files is 513 MB (297,878 records).
 ;; 
