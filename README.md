@@ -1,4 +1,4 @@
-![License](https://img.shields.io/badge/License-EPL%202.0-blue.svg)](https://www.eclipse.org/legal/epl-v20.html) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/ndjson-db.svg)](https://clojars.org/luposlip/ndjson-db)
+[![License](https://img.shields.io/badge/License-EPL%202.0-blue.svg)](https://www.eclipse.org/legal/epl-v20.html) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/ndjson-db.svg)](https://clojars.org/luposlip/ndjson-db)
 
 # ndjson-db
 
