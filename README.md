@@ -90,7 +90,7 @@ Refer to the test for more details.
 To test with a real database, download all verified Twitter users from here:
 https://files.pushshift.io/twitter/TU_verified.ndjson.xz
 
-Put the file somewhere, i.e. 'path/to/TU_verified.ndjson`, and run the
+Put the file somewhere, i.e. `path/to/TU_verified.ndjson`, and run the
 following in a repl:
 
 ```
@@ -99,7 +99,7 @@ following in a repl:
      (doall
       (db/query
        {:id-name "screen_name" 
-        :filename "resources/TU_verified.ndjson"}
+        :filename "path/to/TU_verified.ndjson"}
        ["katyperry" "ladygaga" "BillGates" "ByMikeWilson"]))))
 ```
 
