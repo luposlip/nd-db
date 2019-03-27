@@ -56,25 +56,3 @@
                               :filename  "resources/test/test.ndjson"}
                              [333333 1 77])))))))
 
-
-
-;; To test with real DB, download all verified Twitter users
-;; from here:
-;; https://files.pushshift.io/twitter/TU_verified.ndjson.xz
-;;
-;; Then put the file in resources/test/TU_verified.ndjson, and
-;; run the following in a repl:
-;;
-#_(time 
-   (def katy-gaga-gates-et-al
-     (doall
-      (db/query
-       {:id-name "screen_name" 
-        :filename "resources/TU_verified.ndjson"}
-       ["katyperry" "ladygaga" "BillGates" "ByMikeWilson"]))))
-
-;; The extracted .ndjson files is 513 MB (297,878 records).
-;; 
-;; On my laptop (Intel® Core™ i7-8750H CPU @ 2.20GHz × 6 cores with 31,2 GB RAM)
-;; the initial build of the index takes around 3 seconds, and the subsequent
-;; query of the above 3 verified Twitter users takes around 1 millisecond
