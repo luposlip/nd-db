@@ -10,7 +10,7 @@ A very tiny *test database* resides in `resources/test/test.ndjson`.
 
 It contains the following 3 documents, that has `"id"` as their unique IDs:
 
-```
+```json
 {"id":1, "data": ["some", "semi-random", "data"]}
 {"id":222, "data": 42}
 {"id":333333,"data": {"datakey": "datavalue"}}
@@ -20,7 +20,7 @@ It contains the following 3 documents, that has `"id"` as their unique IDs:
 
 To find the data for the document with ID `222`, you can perform a `query-single`:
 
-```
+```clojure
 (db/query-single
  {:id-fn-key :by-id
   :filename "resources/test/test.ndjson"}
@@ -32,7 +32,7 @@ To find the data for the document with ID `222`, you can perform a `query-single
 If you use the multiple select interface, the function is added to the internal
 ID-function repository:
 
-```
+```clojure
 (db/query
  {:id-fn-key :by-id
   :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %)))
@@ -93,7 +93,7 @@ https://files.pushshift.io/twitter/TU_verified.ndjson.xz
 Put the file somewhere, i.e. `path/to/TU_verified.ndjson`, and run the
 following in a repl:
 
-```
+```clojure
 (time 
    (def katy-gaga-gates-et-al
      (doall
