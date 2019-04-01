@@ -1,5 +1,6 @@
 (ns ndjson-db.core
   (:require [clojure.java.io :as jio]
+            [clojure.core.memoize :as memo]
             [cheshire.core :as json]))
 
 (def id-fns (atom {}))
@@ -39,7 +40,18 @@
           index)))))
 
 (def ndjson->idx
-  (memoize ndjson->idx*))
+  (memo/memo ndjson->idx*))
+
+(defn clear-all-indices!!
+  "This should be used with care, as it does as advertized!"
+  []
+  (memo/memo-clear! ndjson->idx))
+
+(defn clear-index! "Clear an index based on ID function and database filename"
+  [{:keys [id-fn-key filename]}]
+  {:pre [(keyword? id-fn-key)
+         (string? filename)]}
+  (memo/memo-clear! ndjson->idx [id-fn-key filename]))
 
 (defn query-single
   "Queries a single JSON doc. by id in .ndjson file as database,

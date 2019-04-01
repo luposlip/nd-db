@@ -20,7 +20,7 @@
   (testing ".ndjson file as random access database for single id" 
     (is (= {:id 222
             :data 42}
-           (db/query-single {:id-fn-key  :by-id
+           (db/query-single {:id-fn-key :by-id
                              :filename 
                              "resources/test/test.ndjson"}
                             222)))))

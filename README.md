@@ -2,6 +2,10 @@
 
 # ndjson-db
 
+```clojure
+[luposlip/ndjson-db "0.1.2"]
+```
+
 Clojure library for using (huge) .ndjson files as lightning fast databases.
 
 ## Usage
@@ -66,7 +70,7 @@ the index.
 In the `:by-id` example above, the value of `"id"` is used as a unique ID to
 built up the database index.
 
-#### Parsing of documents
+#### Parsing JSON documents
 
 If you use very large databases, it makes sense to think about performance in
 your ID function. In the above example a regular expression is used to find
@@ -84,6 +88,21 @@ Also note that the return value is the same you should use to query the
 database. Which is why the inputs to `query-single` and `query` are integers.
 
 Refer to the test for more details.
+
+### Clear indices
+
+If you want to clear an index use the function `clear-index!` like this:
+
+```clojure
+(ndjson-db.core/clear-index!
+  {:id-fn-key :by-id
+   :filename "resources/test/test.ndjson"})
+```
+
+If you want to clear all indices, use `clear-all-indices!`.
+
+The above mentioned clearing functions are particularly useful in development and
+test scenarios.
 
 ## Real use case: Verified Twitter Accounts
 
