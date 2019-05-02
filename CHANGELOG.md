@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+## [Unreleased]
+
+### TODO
+- Completely revamped API
+- Utility function to get lazy seq of all indexed IDs
+
 ## 0.1.2 - 2019-04-01
 
 ### Added
