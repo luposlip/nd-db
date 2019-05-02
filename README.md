@@ -6,7 +6,7 @@
 [luposlip/ndjson-db "0.1.2"]
 ```
 
-Clojure library for using (huge) .ndjson files as lightning fast databases.
+Clojure library for using (huge) [.ndjson](http://ndjson.org/) files as lightning fast databases.
 
 ## Usage
 
@@ -132,8 +132,8 @@ query of the above 3 verified Twitter users takes around 1 millisecond
 (specs: Intel® Core™ i7-8750H CPU @ 2.20GHz × 6 cores with 31,2 GB RAM, SSD HD).
 
 In real usage scenarios, I've used 2 databases simultaneously of sizes 1.6 GB and
-2.0 GB, with no problem or penalties at all (except for the relatively small size of
-the indices of course).
+43.0 GB, with no problem or penalties at all (except for the relatively small size of
+the indices of course). Indexing the biggest database of 43GB took less than 2 minutes.
 
 Since the database uses disk random access, SSD speed up the database significantly.
 
