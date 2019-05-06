@@ -4,8 +4,12 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased]
 
 ### TODO
-- Completely revamped API
 - Utility function to get lazy seq of all indexed IDs
+
+## [0.2.0] - 2019-05-06
+
+### Added
+- Completely revamped API
 - `clear-all-indices!!` -> `clear-all-indexes!!`
 - Using [timbre](https://github.com/ptaoussanis/timbre) for logging
 - Now using Apache License, Version 2.0 (instead of Eclipse Licence 2.0)
@@ -28,6 +32,7 @@ All notable changes to this project will be documented in this file. This change
 - Initial public release
 - Example on how to query huge datasets
 
-[Unreleased]: https://github.com/luposlip/ndjson-db/compare/0.1.2...0.2.0
+[Unreleased]: https://github.com/luposlip/ndjson-db/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/luposlip/ndjson-db/compare/0.1.2...0.2.0
 [0.1.2]: https://github.com/luposlip/ndjson-db/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/luposlip/ndjson-db/compare/0.1.0...0.1.1
