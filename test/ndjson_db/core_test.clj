@@ -2,34 +2,89 @@
   (:require [clojure.test :refer :all]
             [ndjson-db.core :as db]))
 
-(deftest ndjson-idx*
-  ;; Hack
-  (swap! db/id-fns assoc
-         :by-id  #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
-  (testing ".ndjson file transformed to random access index" 
-    (is (= {1 [0 49]
-            222 [50 22]
-            333333 [73 46]}
-           (db/ndjson->idx* :by-id 
-                            "resources/test/test.ndjson")))))
+(def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
+
+(deftest index-id
+  (testing "Index ID"
+    (is (= [1 222 333333]
+           (db/index-id {:filename "resources/test/test.ndjson"
+                         :id-fn by-id})))))
+
+(deftest index*
+  (let [{:keys [filename id-fn] :as params}
+        {:filename "resources/test/test.ndjson"
+         :id-fn by-id}
+        idx-id (db/index-id params)]
+    (swap! db/indexes ;; Test hack
+           assoc-in
+           [filename idx-id]
+           id-fn)
+    (testing "Database index" 
+      (is (= {1 [0 49]
+              222 [50 22]
+              333333 [73 46]}
+             (db/index* filename idx-id))))))
+
+(deftest db?
+  (testing "Somewhat valid check with db?"
+    (is (db/db? (future {:index {}
+                         :filename ""}))))
+  (testing "Unreal test with db?"
+    (is (not (db/db? (future {}))))))
+
+(deftest db
+  (testing "Getting a database"
+    (is (db/db?
+         (db/db {:id-fn by-id
+                 :filename "resources/test/test.ndjson"})))))
 
 (deftest query-single
-  ;; Hack
-  (swap! db/id-fns assoc
-         :by-id  #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
   (testing ".ndjson file as random access database for single id" 
     (is (= {:id 222
             :data 42}
-           (db/query-single {:id-fn-key :by-id
-                             :filename 
-                             "resources/test/test.ndjson"}
-                            222)))))
+           (db/q (db/db {:id-fn by-id
+                         :filename "resources/test/test.ndjson"})
+                 222)))))
 
-(deftest id-key-fn-by-name
-  (testing "Generating map with :id-fn and :id-fn-key from json name"
-    (let [{:keys [id-fn-key id-fn]} (db/id-key-fn-by-name "id" :integer)]
-      (is (= :by-name-id id-fn-key))
-      (is (fn? id-fn)))))
+(deftest get-id-fn
+  (testing "Generating map with :id-fn from json name"
+    (let [id-fn (db/get-id-fn {:id-name "id"
+                               :id-type :integer})]
+      (is (fn? id-fn))
+      (is (= 2 (id-fn "{\"id\":2}")))
+      
+      (testing "Implicit :id-type :string, explicit :source-type :integer"
+        (is (= "2" ((db/get-id-fn {:id-name "id"
+                                   :source-type :integer})
+                    "{\"id\":2}"))))
+      
+      (testing "Explicit :id-type :integer, implicit :source-type :integer"
+        (is (= 2 ((db/get-id-fn {:id-name "id"
+                                 :id-type :integer})
+                  "{\"id\":2}"))))
+      
+      (testing "Explicit :id-type :string, implicit :source-type :string"
+        (is (= "2" ((db/get-id-fn {:id-name "id"
+                                   :id-type :string})
+                    "{\"id\":\"2\"}"))))
+      
+      (testing "Explicit :id-type :string, explicit :source-type :string"
+        (is (= "2" ((db/get-id-fn {:id-name "id"
+                                   :id-type :string
+                                   :source-type :string})
+                    "{\"id\":\"2\"}"))))
+
+      (testing "Explicit :id-type :string, explicit :source-type :integer"
+        (is (= "2" ((db/get-id-fn {:id-name "id"
+                                   :id-type :string
+                                   :source-type :integer})
+                    "{\"id\":2}"))))
+
+      (testing "Explicit :id-type :integer, explicit :source-type :integer"
+        (is (= 2 ((db/get-id-fn {:id-name "id"
+                                 :id-type :integer
+                                 :source-type :integer})
+                  "{\"id\":2}")))))))
 
 (deftest query
   (testing ".ndjson file as random access database for multiple ids"
@@ -40,10 +95,9 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (into []
-                   (db/query {:id-fn-key :by-id
-                              :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %)))
-                              :filename  "resources/test/test.ndjson"}
-                             [333333 1 77])))))
+                   (db/q (db/db {:id-fn by-id
+                                 :filename  "resources/test/test.ndjson"})
+                         [333333 1 77])))))
     
     (testing "using :id-name and :id-type as params"
       (is (= [{:id 333333
@@ -51,8 +105,9 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (into []
-                   (db/query {:id-name "id"
-                              :id-type :integer
-                              :filename  "resources/test/test.ndjson"}
-                             [333333 1 77])))))))
+                   (db/q (db/db {:id-name "id"
+                                 :id-type :string
+                                 :source-type :integer
+                                 :filename  "resources/test/test.ndjson"})
+                         ["333333" "1" "77"])))))))
 
