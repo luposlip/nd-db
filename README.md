@@ -98,7 +98,7 @@ like this:
 (ndjson-db.core/clear-index! db)
 ```
 
-With `clear-all-indices!` you can clear all indices across all databases currently in use.
+With `clear-all-indexes!!` you can clear all indices across all databases currently in use.
 
 The above mentioned clearing functions are particularly useful in development and
 test scenarios.

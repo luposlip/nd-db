@@ -6,7 +6,9 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 - Completely revamped API
 - Utility function to get lazy seq of all indexed IDs
-- Now using Apache License, Version 2.0
+- `clear-all-indices!!` -> `clear-all-indexes!!`
+- Using [timbre](https://github.com/ptaoussanis/timbre) for logging
+- Now using Apache License, Version 2.0 (instead of Eclipse Licence 2.0)
 
 ## [0.1.2] - 2019-04-01
 
