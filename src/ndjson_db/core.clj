@@ -4,7 +4,7 @@
             [taoensso.timbre :as log]
             [cheshire.core :as json]))
 
-(def indexes
+(def index-fns
   "In the form {\"filename1\"
                    {\"9298cvoa\" {index-w-first-few-ids-as-str-=-9298cvoa}
                 \"filename2\"
@@ -37,7 +37,7 @@
   [filename idx-id]
   {:pre [(string? filename)
          (vector? idx-id)]}
-  (let [id-fn (get-in @indexes [filename idx-id])]
+  (let [id-fn (get-in @index-fns [filename idx-id])]
     (if (fn? id-fn)
       (with-open [rdr (jio/reader filename)] 
         (loop [lines (line-seq rdr)
@@ -93,9 +93,9 @@
                 (get-id-fn params)
                 id-fn)
         idx-id (index-id params)]
-    (if (get-in @indexes [filename idx-id])
+    (if (get-in @index-fns [filename idx-id])
       (log/info (str "Index " idx-id " for " filename " already"))
-      (swap! indexes assoc-in [filename idx-id] id-fn))
+      (swap! index-fns assoc-in [filename idx-id] id-fn))
     (future {:filename filename
              :index (index filename idx-id)})))
 
