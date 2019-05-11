@@ -15,7 +15,7 @@
         {:filename "resources/test/test.ndjson"
          :id-fn by-id}
         idx-id (db/index-id params)]
-    (swap! db/indexes ;; Test hack
+    (swap! db/index-fns ;; Test hack
            assoc-in
            [filename idx-id]
            id-fn)
