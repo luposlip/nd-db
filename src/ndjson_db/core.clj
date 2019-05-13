@@ -93,8 +93,7 @@
                 (get-id-fn params)
                 id-fn)
         idx-id (index-id params)]
-    (if (get-in @index-fns [filename idx-id])
-      (log/info (str "Index " idx-id " for " filename " already"))
+    (when (not (get-in @index-fns [filename idx-id]))
       (swap! index-fns assoc-in [filename idx-id] id-fn))
     (future {:filename filename
              :index (index filename idx-id)})))
