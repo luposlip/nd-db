@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/luposlip/ndjson-db/tree/master.svg?style=svg)](https://circleci.com/gh/luposlip/ndjson-db/tree/master) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/ndjson-db.svg)](https://clojars.org/luposlip/ndjson-db)
+[![CircleCI](https://circleci.com/gh/luposlip/ndjson-db/tree/master.svg?style=svg)](https://circleci.com/gh/luposlip/ndjson-db/tree/master) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/ndjson-db.svg)](https://clojars.org/luposlip/ndjson-db) [![Dependencies Status](https://versions.deps.co/luposlip/ndjson-db/status.svg)](https://versions.deps.co/luposlip/ndjson-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # ndjson-db
 
