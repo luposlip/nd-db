@@ -3,7 +3,7 @@
 # ndjson-db
 
 ```clojure
-[luposlip/ndjson-db "0.2.0"]
+[luposlip/ndjson-db "0.2.1"]
 ```
 
 Clojure library for using (huge) [.ndjson](http://ndjson.org/) files as lightning fast databases.

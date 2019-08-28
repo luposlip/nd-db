@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.2.1] - 2019-08-29
+
+### Changed
+- Updated depencies (clojure, cheshire, memoize)
+
 ## [0.2.0] - 2019-05-06
 
 ### Added
