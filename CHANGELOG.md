@@ -4,7 +4,13 @@ All notable changes to this project will be documented in this file. This change
 ## [Unreleased]
 
 ### TODO
+
 - Utility function to get lazy seq of all indexed IDs
+
+## [0.2.2] - 2021-01-12
+
+### Changed
+- Updated depencies (timbre, memoize, cheshire)
 
 ## [0.2.1] - 2019-08-29
 
