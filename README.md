@@ -157,7 +157,7 @@ Since the database uses disk random access, SSD speed up the database significan
 
 ## Copyright & License
 
-Copyright (C) 2019 Henrik Mohr
+Copyright (C) 2019-2021 Henrik Mohr
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
