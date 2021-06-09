@@ -115,11 +115,11 @@
           :single
           :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
 
-(defn parse-doc [{:keys [doc-type]} doc-str]
-  (condp = doc-type
+(defn parse-doc [db doc-str]
+  (condp = (:doc-type @db)
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
-    (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
 
 (defmethod q :single query-single
   [db id]
@@ -132,9 +132,9 @@
         (.seek start)
         (.read bytes 0 len)
         (.close))
-      (-> bytes
-          (String.)
-          (parse-doc db)))))
+      (->> bytes
+           (String.)
+           (parse-doc db)))))
 
 (defmethod q :sequential query-multiple
   [db ids]
