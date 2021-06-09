@@ -13,9 +13,9 @@
 (deftest index-id-edn
   (testing "Index ID, EDN edition"
     (is (= [123 231 312]
-           (db/indexid {:filename "resources/test/test.ndedn"
-                        :id-fn #(:id (clojure.edn/read-string %))
-                        :doc-type :edn})))))
+           (db/index-id {:filename "resources/test/test.ndedn"
+                         :id-fn #(:id (clojure.edn/read-string %))
+                         :doc-type :edn})))))
 
 (deftest index*
   (let [{:keys [filename id-fn] :as params}
