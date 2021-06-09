@@ -1,5 +1,5 @@
-(defproject luposlip/ndjson-db "0.2.2"
-  :description "Clojure library for using (huge) .ndjson files as lightning fast databases"
+(defproject luposlip/ndjson-db "0.3.0"
+  :description "Clojure library for using (huge) .ndjson/.ndedn files as lightning fast databases"
   :url "https://github.com/luposlip/ndjson-db"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}

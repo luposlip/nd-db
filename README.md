@@ -3,10 +3,10 @@
 # ndjson-db
 
 ```clojure
-[luposlip/ndjson-db "0.2.2"]
+[luposlip/ndjson-db "0.3.0"]
 ```
 
-Clojure library for using (huge) [.ndjson](http://ndjson.org/) files as lightning fast databases.
+Clojure library for using (huge) [.ndjson](http://ndjson.org/) and .ndedn files as lightning fast databases (ndedn isn't a standard, but similar to ndjson - it's just an EDN doc per line instead of JSON).
 
 ## Usage
 
@@ -38,6 +38,9 @@ If you want a default `:id-fn` created for you, use the `:id-name` together with
                             :filename "resources/test/test.ndjson"}))
 ```
 
+### EDN
+
+If you want to read a database of EDN documents, just use `:doc-type :edn`. Please note that the standard `:id-name` and `:id-type` parameters doesn't (as of v0.3.0) work with EDN, hence you need to implement the `:id-fn` accordingly.
 
 ### Query Single Document
 

@@ -1,8 +1,10 @@
 (ns ndjson-db.core
   (:require [clojure.java.io :as jio]
+            [clojure.edn :as edn]
             [clojure.core.memoize :as memo]
             [taoensso.timbre :as log]
-            [cheshire.core :as json]))
+            [cheshire.core :as json])
+  (:import [java.util Date]))
 
 (def index-fns
   "In the form {\"filename1\"
@@ -85,10 +87,12 @@
 
 (defn db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn id-name id-type filename] :or {id-type :string} :as params}]
+  [{:keys [id-fn id-name id-type doc-type filename] :or {id-type :string} :as params}]
   {:pre [(or (string? id-name)
              (fn? id-fn))
-         (string? filename)]}
+         (string? filename)
+         (or (nil? doc-type)
+             (#{:json :edn} doc-type))]}
   (let [id-fn (if id-name
                 (get-id-fn params)
                 id-fn)
@@ -96,7 +100,9 @@
     (when (not (get-in @index-fns [filename idx-id]))
       (swap! index-fns assoc-in [filename idx-id] id-fn))
     (future {:filename filename
-             :index (index filename idx-id)})))
+             :index (index filename idx-id)
+             :doc-type (or doc-type :json)
+             :timestamp (Date.)})))
 
 (defmulti q
   "Queries a single or multiple JSON docs from the database by a single or
@@ -109,6 +115,12 @@
           :single
           :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
 
+(defn parse-doc [db doc-str]
+  (condp = (:doc-type @db)
+    :json (json/parse-string doc-str true)
+    :edn (edn/read-string doc-str)
+    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
+
 (defmethod q :single query-single
   [db id]
   {:pre [(db? db)
@@ -120,9 +132,9 @@
         (.seek start)
         (.read bytes 0 len)
         (.close))
-      (-> bytes
-          (String.)
-          (json/parse-string true)))))
+      (->> bytes
+           (String.)
+           (parse-doc db)))))
 
 (defmethod q :sequential query-multiple
   [db ids]
