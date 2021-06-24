@@ -1,6 +1,6 @@
-(ns ndjson-db.core-test
+(ns nd-db.core-test
   (:require [clojure.test :refer :all]
-            [ndjson-db.core :as db]))
+            [nd-db.core :as db]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -17,7 +17,7 @@
                          :id-fn #(:id (clojure.edn/read-string %))
                          :doc-type :edn})))))
 
-(deftest index*
+(deftest create-index
   (let [{:keys [filename id-fn] :as params}
         {:filename "resources/test/test.ndjson"
          :id-fn by-id}
@@ -30,7 +30,7 @@
       (is (= {1 [0 49]
               222 [50 22]
               333333 [73 46]}
-             (db/index* filename idx-id))))))
+             (db/create-index filename idx-id))))))
 
 (deftest db?
   (testing "Somewhat valid check with db?"

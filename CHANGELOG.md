@@ -7,6 +7,27 @@ All notable changes to this project will be documented in this file. This change
 
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.4.0] - 2021-06-24
+
+`0.4.0` is simpler, smaller and faster!
+
+### Added
+- Massive improvement of index generation, when multiple CPU cores are available
+- Auto-infer `:doc-type` from db file extension (`*.ndedn` -> `:doc-type :edn`)
+
+### Breaking Change!
+- Rename library and namespace from `ndjson-db` to `nd-db`!
+
+### Changed
+- Updated clojure (-> 1.10.3)
+- Removed core.memoize (not used anymore)
+- Removed timbre (not used anymore)
+
+## [0.3.0] - 2021-06-09
+
+### Added
+- Add support for the `.ndedn` file format, where all lines are well formed EDN documents.
+
 ## [0.2.2] - 2021-01-12
 
 ### Changed
@@ -43,7 +64,11 @@ All notable changes to this project will be documented in this file. This change
 - Initial public release
 - Example on how to query huge datasets
 
-[Unreleased]: https://github.com/luposlip/ndjson-db/compare/0.2.0...HEAD
-[0.2.0]: https://github.com/luposlip/ndjson-db/compare/0.1.2...0.2.0
-[0.1.2]: https://github.com/luposlip/ndjson-db/compare/0.1.1...0.1.2
-[0.1.1]: https://github.com/luposlip/ndjson-db/compare/0.1.0...0.1.1
+[Unreleased]: https://github.com/luposlip/nd-db/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/luposlip/nd-db/compare/0.3.0...0.4.0
+[0.3.0]: https://github.com/luposlip/nd-db/compare/0.2.2...0.3.0
+[0.2.2]: https://github.com/luposlip/nd-db/compare/0.2.1...0.2.2
+[0.2.1]: https://github.com/luposlip/nd-db/compare/0.2.0...0.2.1
+[0.2.0]: https://github.com/luposlip/nd-db/compare/0.1.2...0.2.0
+[0.1.2]: https://github.com/luposlip/nd-db/compare/0.1.1...0.1.2
+[0.1.1]: https://github.com/luposlip/nd-db/compare/0.1.0...0.1.1

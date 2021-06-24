@@ -1,8 +1,7 @@
-(ns ndjson-db.core
-  (:require [clojure.java.io :as jio]
+(ns nd-db.core
+  (:require [clojure.core.reducers :as r]
+            [clojure.java.io :as jio]
             [clojure.edn :as edn]
-            [clojure.core.memoize :as memo]
-            [taoensso.timbre :as log]
             [cheshire.core :as json])
   (:import [java.util Date]))
 
@@ -31,7 +30,7 @@
          (re-pattern (format "%s\":%s" id-name source-pattern))
          %)))))
 
-(defn index*
+(defn create-index
   "Builds up an index of Entity IDs as keys (IDs extracted with id-fn),
   and as value a vector with 2 values:
   the start index in the text file to start read EDN for the JSON doc.,
@@ -55,20 +54,6 @@
             idx)))
       (throw (ex-info "No id-fn found for index" {:filename filename
                                                   :idx-id idx-id})))))
-
-(def index
-  (memo/memo index*))
-
-(defn clear-all-indexes!!
-  "This should be used with care; it does as advertized!"
-  []
-  (memo/memo-clear! index))
-
-(defn clear-index!
-  "Clear an index based on ID function and database filename"
-  [{:keys [filename]}]
-  {:pre [(string? filename)]}
-  (memo/memo-clear! index filename))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -100,7 +85,7 @@
     (when (not (get-in @index-fns [filename idx-id]))
       (swap! index-fns assoc-in [filename idx-id] id-fn))
     (future {:filename filename
-             :index (index filename idx-id)
+             :index (create-index filename idx-id)
              :doc-type (or doc-type :json)
              :timestamp (Date.)})))
 

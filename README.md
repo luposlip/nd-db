@@ -1,12 +1,20 @@
-![Clojure CI](https://github.com/luposlip/ndjson-db/workflows/Clojure%20CI/badge.svg?branch=master) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/ndjson-db.svg)](https://clojars.org/luposlip/ndjson-db) [![Dependencies Status](https://versions.deps.co/luposlip/ndjson-db/status.svg)](https://versions.deps.co/luposlip/ndjson-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![Clojure CI](https://github.com/luposlip/nd-db/workflows/Clojure%20CI/badge.svg?branch=master) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/nd-db.svg)](https://clojars.org/luposlip/nd-db) [![Dependencies Status](https://versions.deps.co/luposlip/nd-db/status.svg)](https://versions.deps.co/luposlip/nd-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-# ndjson-db
+# nd-db
 
 ```clojure
-[luposlip/ndjson-db "0.3.0"]
+[luposlip/nd-db "0.4.0"]
 ```
 
-Clojure library for using (huge) [.ndjson](http://ndjson.org/) and .ndedn files as lightning fast databases (ndedn isn't a standard, but similar to ndjson - it's just an EDN doc per line instead of JSON).
+**BREAKING CHANGE!**
+
+This library has been renamed from `ndjson-db` to `nd-db`. This includes the primary namespace!
+
+_Newline Delimited Databases!_
+
+Clojure library that treats lines in newline delimited (potentially humongous) files as simple (thus lightening fast) databases.
+
+`nd-db` currently works with JSON documents in [.ndjson](http://ndjson.org/) files, and EDN documents in `.ndedn`.
 
 ## Usage
 
@@ -26,16 +34,16 @@ Since version `0.2.0` you need to create a database var before you can use the
 database. Behind the scenes this creates an index for you in a background thread.
 
 ```clojure
-(def db (ndjson-db.core/db {:id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
-                            :filename "resources/test/test.ndjson"}))
+(def db (nd-db.core/db {:id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
+                        :filename "resources/test/test.ndjson"}))
 ```
 
 If you want a default `:id-fn` created for you, use the `:id-name` together with `:id-type` and/or `:source-type`. Both `:id-type` and `:source-type` can be `:string` or `:integer`. `:id-type` is the target type of the indexed ID, whereas `:source-type` is the type in the source `.ndjson` database file. `:source-type` defaults to `:id-type`, and `:id-type` defaults to `:string`:
 
 ```clojure
-(def db (ndjson-db.core/db {:id-name "id"
-                            :id-type :integer
-                            :filename "resources/test/test.ndjson"}))
+(def db (nd-db.core/db {:id-name "id"
+                        :id-type :integer
+                        :filename "resources/test/test.ndjson"}))
 ```
 
 ### EDN
@@ -49,7 +57,7 @@ With a reference to the `db` you can query the database.
 To find the data for the document with ID `222`, you can perform a `query-single`:
 
 ```clojure
-(ndjson-db.core/q db 222)
+(nd-db.core/q db 222)
 ```
 
 ### Query Multiple Documents
@@ -58,7 +66,7 @@ You can also perform multiple queries at once. This is ideal for a pipelined sce
 since the return value is a lazy seq:
 
 ```clojure
-(ndjson-db.core/q db [333333 1 77])
+(nd-db.core/q db [333333 1 77])
 ```
 
 ### It keeps!
@@ -107,7 +115,7 @@ If you want to force the recreation of an index, use the function `clear-index!`
 like this:
 
 ```clojure
-(ndjson-db.core/clear-index! db)
+(nd-db.core/clear-index! db)
 ```
 
 With `clear-all-indexes!!` you can clear all indices across all databases currently in use.
@@ -136,9 +144,9 @@ following in a repl:
 (time 
    (def katy-gaga-gates-et-al
      (doall
-      (ndjson-db.core/q
-       (ndjson-db.core/db {:id-name "screen_name" 
-                           :filename "path/to/TU_verified.ndjson"})
+      (nd-db.core/q
+       (nd-db.core/db {:id-name "screen_name" 
+                       :filename "path/to/TU_verified.ndjson"})
        ["katyperry" "ladygaga" "BillGates" "ByMikeWilson"]))))
 ```
 
@@ -153,7 +161,7 @@ query of the above 3 verified Twitter users takes around 1 millisecond
 In real usage scenarios, I've used 2 databases simultaneously of sizes 1.6 GB and
 43.0 GB, with no problem or performance penalties at all (except for the relatively small
 size of the in-memory indices of course). Indexing the biggest database of 43GB took less
-than 2 minutes.
+than 2 minutes (NB: This is with a single core, and BEFORE 0.4.0).
 
 Since the database uses disk random access, SSD speed up the database significantly.
 
