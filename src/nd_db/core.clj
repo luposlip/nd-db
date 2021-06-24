@@ -4,7 +4,7 @@
             [clojure.java.io :as jio]
             [clojure.edn :as edn]
             [cheshire.core :as json])
-  (:import [java.util Date]))
+  (:import [java.util Date ArrayList]))
 
 (def index-fns
   "In the form {\"filename1\"
@@ -32,19 +32,39 @@
          %)))))
 
 (defn reducr [id-fn]
-  (fn [a line]
+  (fn [acc line]
     (let [len (count (.getBytes ^String line))
           id (id-fn line)
-          idx (first a)]
-      (-> a
-          (update 0 + (inc len))
-          (update 1 assoc id [idx len])))))
+          [_ start plen] (if-let [p (peek acc)]
+                           p
+                           [nil -1 0])]
+      (conj acc [id (+ 1 start plen) len]))))
+
+(defn combinr
+  ([] [])
+  ([_] [])
+  ([acc more]
+   (let [[_ prev-start prev-len] (if-let [p (peek acc)]
+                                   p
+                                   [nil -1 0])
+         prev-offset (+ 1 prev-start prev-len)]
+     (reduce
+      (fn [a [id old-start len]]
+        (conj a [id (+ prev-offset old-start) len]))
+      acc
+      more))))
 
 (defn create-index
   "Builds up an index of Entity IDs as keys (IDs extracted with id-fn),
   and as value a vector with 2 values:
   - the start index in the text file to start read EDN for the input doc
-  - the length in bytes input doc"
+  - the length in bytes input doc
+
+  Default lines processed per batch per core is set to 8, which is pretty
+  low. This is due to potential memory issues.
+  You can tweak this with environment variable (bash):
+
+  export NDDB_LINES_PER_CORE=250"
   [filename idx-id]
   {:pre [(string? filename)
          (vector? idx-id)]}
@@ -53,8 +73,15 @@
       (with-open [rdr (jio/reader filename)]
         (->> rdr
              line-seq
-             (r/fold 512 #(vector 0 {}) (reducr id-fn))
-             second))
+             (into [])
+             (r/fold (or (when-let [e (System/getenv "NDDB_LINES_PER_CORE")]
+                           (edn/read-string e)) 8)
+                     combinr
+                     (reducr id-fn))
+             (reduce
+              (fn [acc i]
+                (assoc acc (first i) (into [] (rest i))))
+              {})))
       (throw (ex-info "No id-fn found for index" {:filename filename
                                                   :idx-id idx-id})))))
 

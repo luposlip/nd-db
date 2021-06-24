@@ -10,7 +10,7 @@
 
 This library has been renamed from `ndjson-db` to `nd-db`. This includes the primary namespace!
 
-_Newline Delimited Databases!_
+_Newline Delimited (read-only) Databases!_
 
 Clojure library that treats lines in newline delimited (potentially humongous) files as simple (thus lightening fast) databases.
 
