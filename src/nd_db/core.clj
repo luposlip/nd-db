@@ -1,5 +1,6 @@
 (ns nd-db.core
   (:require [clojure.core.reducers :as r]
+            [clojure.string :as s]
             [clojure.java.io :as jio]
             [clojure.edn :as edn]
             [cheshire.core :as json])
@@ -30,28 +31,30 @@
          (re-pattern (format "%s\":%s" id-name source-pattern))
          %)))))
 
+(defn reducr [id-fn]
+  (fn [a line]
+    (let [len (count (.getBytes ^String line))
+          id (id-fn line)
+          idx (first a)]
+      (-> a
+          (update 0 + (inc len))
+          (update 1 assoc id [idx len])))))
+
 (defn create-index
   "Builds up an index of Entity IDs as keys (IDs extracted with id-fn),
   and as value a vector with 2 values:
-  the start index in the text file to start read EDN for the JSON doc.,
-  and secondly the length in bytes JSON doc."
+  - the start index in the text file to start read EDN for the input doc
+  - the length in bytes input doc"
   [filename idx-id]
   {:pre [(string? filename)
          (vector? idx-id)]}
   (let [id-fn (get-in @index-fns [filename idx-id])]
     (if (fn? id-fn)
-      (with-open [rdr (jio/reader filename)] 
-        (loop [lines (line-seq rdr)
-               start 0
-               idx {}]
-          (if (seq lines)
-            (let [line (first lines)
-                  len (count (.getBytes ^String line))
-                  id (id-fn line)]
-              (recur (rest lines)
-                     (+ start len 1)
-                     (assoc idx id [start len])))
-            idx)))
+      (with-open [rdr (jio/reader filename)]
+        (->> rdr
+             line-seq
+             (r/fold 512 #(vector 0 {}) (reducr id-fn))
+             second))
       (throw (ex-info "No id-fn found for index" {:filename filename
                                                   :idx-id idx-id})))))
 
@@ -70,15 +73,20 @@
        (contains? @candidate :filename)
        (contains? @candidate :index)))
 
+(defn infer-doctype [filename]
+  (condp = (last (s/split filename #"\."))
+    "ndedn" :edn
+    :json))
+
 (defn db
   "Creates a database var which can be used to perform queries"
   [{:keys [id-fn id-name id-type doc-type filename] :or {id-type :string} :as params}]
   {:pre [(or (string? id-name)
              (fn? id-fn))
-         (string? filename)
-         (or (nil? doc-type)
-             (#{:json :edn} doc-type))]}
-  (let [id-fn (if id-name
+         (string? filename)]}
+  (let [doc-type (or (#{:json :edn} doc-type)
+                     (infer-doctype filename))
+        id-fn (if id-name
                 (get-id-fn params)
                 id-fn)
         idx-id (index-id params)]
@@ -90,9 +98,9 @@
              :timestamp (Date.)})))
 
 (defmulti q
-  "Queries a single or multiple JSON docs from the database by a single or
-  multiple IDs matching those from the `.ndjson` database by `id-fn`.
-  -  returns EDN for the matching JSON document."
+  "Queries a single or multiple docs from the database by a single or
+  multiple IDs matching those from the `.nd*` database by `id-fn`.
+  -  returns EDN for the matching document."
   (fn [_ p]
     (cond (sequential? p)
           :sequential

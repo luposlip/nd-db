@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file. This change
 ### Added
 - Massive improvement of index generation, when multiple CPU cores are available
 - Auto-infer `:doc-type` from db file extension (`*.ndedn` -> `:doc-type :edn`)
+  - This means you have to use either db extension `.ndedn`|`.ndjson` or `:doc-type :json`|`:edn`
+  - Defaults to `:json` if extension is unknown and `:doc-type` isn't set
 
 ### Breaking Change!
 - Rename library and namespace from `ndjson-db` to `nd-db`!

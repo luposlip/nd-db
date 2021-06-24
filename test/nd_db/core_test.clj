@@ -1,5 +1,6 @@
 (ns nd-db.core-test
   (:require [clojure.test :refer :all]
+            [clojure.edn :as edn]
             [nd-db.core :as db]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
@@ -14,7 +15,7 @@
   (testing "Index ID, EDN edition"
     (is (= [123 231 312]
            (db/index-id {:filename "resources/test/test.ndedn"
-                         :id-fn #(:id (clojure.edn/read-string %))
+                         :id-fn #(:id (edn/read-string %))
                          :doc-type :edn})))))
 
 (deftest create-index
