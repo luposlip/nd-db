@@ -38,10 +38,11 @@
           [_ start plen] (if-let [p (peek acc)]
                            p
                            [nil -1 0])]
+      ;; TODO concat into list for parallelization
       (conj acc [id (+ 1 start plen) len]))))
 
 (defn combinr
-  ([] [])
+  ([] []) ;; TODO: Lazify for parallelization
   ([_] [])
   ([acc more]
    (let [[_ prev-start prev-len] (if-let [p (peek acc)]
@@ -72,10 +73,9 @@
     (if (fn? id-fn)
       (with-open [rdr (jio/reader filename)]
         (->> rdr
-             line-seq
-             (into [])
+             line-seq ;; for parallel processing, (into []) below here!
              (r/fold (or (when-let [e (System/getenv "NDDB_LINES_PER_CORE")]
-                           (edn/read-string e)) 8)
+                           (edn/read-string e)) 512)
                      combinr
                      (reducr id-fn))
              (reduce

@@ -6,24 +6,26 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - Utility function to get lazy seq of all indexed IDs
+- Persist index in temp file system for fast future initialization
 
 ## [0.4.0] - 2021-06-24
 
-`0.4.0` is simpler, smaller and faster!
+`0.4.0` - simpler and smaller!
 
 ### Added
-- Massive improvement of index generation, when multiple CPU cores are available
 - Auto-infer `:doc-type` from db file extension (`*.ndedn` -> `:doc-type :edn`)
   - This means you have to use either db extension `.ndedn`|`.ndjson` or `:doc-type :json`|`:edn`
   - Defaults to `:json` if extension is unknown and `:doc-type` isn't set
+- Laying the groundwork for improved indexing performance via parallelization.
+  - Need more work to limit memory consumption for huge databases, before enabling it
 
 ### Breaking Change!
 - Rename library and namespace from `ndjson-db` to `nd-db`!
 
 ### Changed
+- Removed core.memoize and timbre (not used anymore)
+  - Smaller deployable!
 - Updated clojure (-> 1.10.3)
-- Removed core.memoize (not used anymore)
-- Removed timbre (not used anymore)
 
 ## [0.3.0] - 2021-06-09
 
