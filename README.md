@@ -1,14 +1,15 @@
-![Clojure CI](https://github.com/luposlip/nd-db/workflows/Clojure%20CI/badge.svg?branch=master) [![Clojars Project](https://img.shields.io/clojars/v/luposlip/nd-db.svg)](https://clojars.org/luposlip/nd-db) [![Dependencies Status](https://versions.deps.co/luposlip/nd-db/status.svg)](https://versions.deps.co/luposlip/nd-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![Clojure CI](https://github.com/luposlip/nd-db/workflows/Clojure%20CI/badge.svg?branch=master) [![Clojars Project](https://img.shields.io/clojars/v/com.luposlip/nd-db.svg)](https://clojars.org/com.luposlip/nd-db) [![Dependencies Status](https://versions.deps.co/luposlip/nd-db/status.svg)](https://versions.deps.co/luposlip/nd-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # nd-db
 
 ```clojure
-[luposlip/nd-db "0.4.0"]
+[com.luposlip/nd-db "0.4.0"]
 ```
 
 **BREAKING CHANGE!**
 
 This library has been renamed from `ndjson-db` to `nd-db`. This includes the primary namespace!
+Furthermore the library identifier now follows Clojars new reverse domain name requirement.
 
 _Newline Delimited (read-only) Databases!_
 

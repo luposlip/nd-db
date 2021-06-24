@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file. This change
   - Need more work to limit memory consumption for huge databases, before enabling it
 
 ### Breaking Change!
-- Rename library and namespace from `ndjson-db` to `nd-db`!
+- Rename core namespace to `nd-db.core`, and the library from `luposlip/ndjson-db` to `com.luposlip/nd-db`!
 
 ### Changed
 - Removed core.memoize and timbre (not used anymore)
