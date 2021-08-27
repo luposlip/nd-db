@@ -45,46 +45,6 @@
                            :filename "resources/test/test.ndjson"})
                 222)))))
 
-(deftest get-id-fn
-  (testing "Generating map with :id-fn from json name"
-    (let [id-fn (t/get-id-fn {:id-name "id"
-                              :id-type :integer})]
-      (is (fn? id-fn))
-      (is (= 2 (id-fn "{\"id\":2}")))
-      
-      (testing "Implicit :id-type :string, explicit :source-type :integer"
-        (is (= "2" ((t/get-id-fn {:id-name "id"
-                                  :source-type :integer})
-                    "{\"id\":2}"))))
-      
-      (testing "Explicit :id-type :integer, implicit :source-type :integer"
-        (is (= 2 ((t/get-id-fn {:id-name "id"
-                                :id-type :integer})
-                  "{\"id\":2}"))))
-      
-      (testing "Explicit :id-type :string, implicit :source-type :string"
-        (is (= "2" ((t/get-id-fn {:id-name "id"
-                                  :id-type :string})
-                    "{\"id\":\"2\"}"))))
-      
-      (testing "Explicit :id-type :string, explicit :source-type :string"
-        (is (= "2" ((t/get-id-fn {:id-name "id"
-                                  :id-type :string
-                                  :source-type :string})
-                    "{\"id\":\"2\"}"))))
-
-      (testing "Explicit :id-type :string, explicit :source-type :integer"
-        (is (= "2" ((t/get-id-fn {:id-name "id"
-                                  :id-type :string
-                                  :source-type :integer})
-                    "{\"id\":2}"))))
-
-      (testing "Explicit :id-type :integer, explicit :source-type :integer"
-        (is (= 2 ((t/get-id-fn {:id-name "id"
-                                :id-type :integer
-                                :source-type :integer})
-                  "{\"id\":2}")))))))
-
 (deftest raw-db
   (testing "Getting a database"
     (is (u/db?
@@ -119,10 +79,10 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (into []
-                   (t/q (t/raw-db {:id-name "id"
-                                   :id-type :string
-                                   :source-type :integer
-                                   :filename  "resources/test/test.ndjson"})
+                   (t/q (t/raw-db (t/parse-params {:id-name "id"
+                                                   :id-type :string
+                                                   :source-type :integer
+                                                   :filename  "resources/test/test.ndjson"}))
                         ["333333" "1" "77"])))))))
 
 

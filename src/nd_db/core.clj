@@ -77,23 +77,21 @@
 (defn infer-doctype [filename]
   (condp = (last (s/split filename #"\."))
     "ndedn" :edn
-    :json))
+    "ndjson" :json
+    :unknown))
 
 (defn raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn id-name doc-type filename] :as params}]
-  {:pre [(or (string? id-name)
-             (fn? id-fn))
+  [{:keys [id-fn filename] :as params}]
+  {:pre [(fn? id-fn)
          (string? filename)]}
-  (let [doc-type (or (#{:json :edn} doc-type)
-                     (infer-doctype filename))
-        id-fn (or id-fn (u/get-id-fn params))
+  (let [id-fn (or id-fn (u/name-type->id+fn params))
         idx-id (index-id {:filename filename :id-fn id-fn})]
     (when (not (get-in @index-fns [filename idx-id]))
       (swap! index-fns assoc-in [filename idx-id] id-fn))
     (future {:filename filename
              :index (create-index filename idx-id)
-             :doc-type (or doc-type :json)
+             :doc-type (infer-doctype filename)
              :timestamp (Date.)})))
 
 (defn parse-params [{:keys [filename id-fn id-rx-str id-name id-type index-folder index-persist?] :as params}]
