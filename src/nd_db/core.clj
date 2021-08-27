@@ -113,7 +113,7 @@
 
   Params:
   :id-rx-str      - Regular expression STRING REPRESENTATION to retrieve unique ID from the data.
-                    The first match used as the ID. The string is used to name the serialized index.
+                    The second match is used as the ID. The string is used to name the serialized index.
                     NB: Regular expressions is often much faster than parsing and inspecting data!
   :id-fn          - For more complex parsing/indexing, you can supply a function instead of
                     a regular expression. Only do this, if you are certain it's faster than regex!
