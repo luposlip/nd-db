@@ -126,7 +126,7 @@ If you want to keep the serialized index file (`*.nddbmeta`) between system rebo
 to another folder. You do that by using the parameter `:index-folder` to the `db` function.
 
 If for some reason you don't want to persist the index - e.g. there's no storage attached to a docker
-container or serverless system - you can inhibit the persistance by setting param `:index-persist?`
+container or serverless system - you can inhibit the persistence by setting param `:index-persist?`
 to `false`.
 
 For more information on these and other parameters, see the source code for the `db` function in the
