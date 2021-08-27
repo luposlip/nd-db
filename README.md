@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.4.0"]
+[com.luposlip/nd-db "0.5.0"]
 ```
 
 **BREAKING CHANGE!**
@@ -110,28 +110,27 @@ database. Which is why the input to `q` are `Integer` instances.
 
 Refer to the test for more details.
 
-### Clear indices
+## Persisting the database index
 
-If you want to force the recreation of an index, use the function `clear-index!`
-like this:
+From v0.5.0 the generated index will be persisted to the temporary system folder on disk.
+This is a huge benefit if you need to use the same database multiple times, after throwing
+away the reference to the parsed database, since it takes much less time to read in the index
+as compared to parsing the database file.
 
-```clojure
-(nd-db.core/clear-index! db)
-```
+For small files (like the sample databases found in this repository) it doesn't really make a difference.
+But for huge files, it makes an immense difference. The bigger the databases, the bigger the individual
+documents and the more complex the parsing of these documents are (to find the unique ID), the bigger
+the difference. For a .database file of 4.7GB the difference is 47s vs 90ms, or **~500 times faster**!!
 
-With `clear-all-indexes!!` you can clear all indices across all databases currently in use.
+If you want to keep the serialized index file (`*.nddbmeta`) between system reboots, you should move it
+to another folder. You do that by using the parameter `:index-folder` to the `db` function.
 
-The above mentioned clearing functions are particularly useful in development and
-test scenarios.
+If for some reason you don't want to persist the index - e.g. there's no storage attached to a docker
+container or serverless system - you can inhibit the persistence by setting param `:index-persist?`
+to `false`.
 
-NB: The framework keeps a live index for each new database you create with the `db`
-function, as long as the resulting index return a different value for the first couple of
-entries in the database. If you're not aware of this, it could theoretically lead to a
-high memory usage in development scenarios, where you try out a lot of different ID
-functions for the same (large) database(s).
-
-To avoid this you could always use clear the index/indices before you try out a new ID
-function. Alternatively you can just restart your repl every now and then.
+For more information on these and other parameters, see the source code for the `db` function in the
+`core` namespace.
 
 ## Real use case: Verified Twitter Accounts
 

@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file. This change
 - Utility function to get lazy seq of all indexed IDs
 - Persist index in temp file system for fast future initialization
 
+## [0.5.0] - 2021-08-26
+
+### Added
+
+- Persist the processed index to disk for fast re-initialization
+  - Saves to temp filesystem folder (default)
+  - optionally a different folder to persist index between system reboots
+  - Uses filename, content and optionally regex-string to name the index file
+
 ## [0.4.0] - 2021-06-24
 
 `0.4.0` - simpler and smaller!
