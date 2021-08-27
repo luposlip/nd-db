@@ -5,7 +5,7 @@
             [buddy.core.codecs :as c]
             digest
             [nd-db.util :as u])
-  (:import [java.io Writer]))
+  (:import [java.io File Writer]))
 
 (defn ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
@@ -30,10 +30,11 @@
   {:post [(u/db? %)]}
   (future (nippy/thaw-from-file filename)))
 
-(defn serialize-db-filename [{:keys [filename id-rx-str]}]
-  (let [db-filename (last (s/split filename #"/"))
+(defn serialize-db-filename [{:keys [filename id-rx-str index-folder]}]
+  (let [db-filename (last (s/split filename (re-pattern File/separator)))
         db-md5 (ndfile-md5 filename)]
-    (str "/tmp/"
+    (str (or index-folder (System/getProperty "java.io.tmpdir"))
+         File/separator
          (first (s/split db-filename #"\."))
          "_" db-md5
          (if id-rx-str (str "_" (u/str->hash id-rx-str)) "")

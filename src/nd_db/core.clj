@@ -96,13 +96,15 @@
              :doc-type (or doc-type :json)
              :timestamp (Date.)})))
 
-(defn parse-params [{:keys [filename id-fn id-rx-str id-name id-type] :as params}]
+(defn parse-params [{:keys [filename id-fn id-rx-str id-name id-type index-folder index-persist?] :as params}]
   {:pre [(or (fn? id-fn)
              (string? id-rx-str)
              (and id-name id-type))]}
-  (assoc (cond id-fn {:id-fn id-fn}
-               id-rx-str (u/rx-str->id+fn params)
-               :else (u/name-type->id+fn params))
+  (assoc (merge (cond id-fn {:id-fn id-fn}
+                      id-rx-str (u/rx-str->id+fn params)
+                      :else (u/name-type->id+fn params))
+                (when index-folder {:index-folder index-folder})
+                (when index-persist? {:index-persist? index-persist?}))
          :filename filename))
 
 (defn db

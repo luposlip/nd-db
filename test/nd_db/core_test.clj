@@ -125,3 +125,19 @@
                                    :filename  "resources/test/test.ndjson"})
                         ["333333" "1" "77"])))))))
 
+
+(deftest explicit-index-folder
+  (let [folder (str (System/getProperty "java.io.tmpdir") "/explicit-folder")
+        params {:id-fn by-id
+                :filename "resources/test/test.ndjson"
+                :index-folder folder}
+        serialized-filename (ndio/serialize-db-filename params)]
+    (prn 'sfn serialized-filename)
+    (io/make-parents (str folder "/null"))
+    (try (io/delete-file serialized-filename) (catch Throwable _ nil))
+    (is (not (.isFile (io/file serialized-filename))))
+    (testing "Getting a database the first time (incl. serialization)"
+      (is (u/db? (t/db params))))
+    (is (.isFile (io/file serialized-filename)))
+    (testing "Getting a database the second time (deserialization)"
+      (is (u/db? (t/db params))))))
