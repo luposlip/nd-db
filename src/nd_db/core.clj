@@ -103,9 +103,9 @@
   (assoc (merge (cond id-fn {:id-fn id-fn}
                       id-rx-str (u/rx-str->id+fn params)
                       :else (u/name-type->id+fn params))
-                (when index-folder {:index-folder index-folder})
-                (when index-persist? {:index-persist? index-persist?}))
-         :filename filename))
+                (when index-folder {:index-folder index-folder}))
+         :filename filename
+         :index-persist? (not (false? index-persist?))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -125,15 +125,18 @@
                     the next parameter for optimal speed.
   :id-type        - The type of data to store as ID (key) in the index
   :source-type    - If the source-type is different from the ID type to store in the index
-  :index-folder   - folder to persist index in, defaults to system temp folder
-  :index-persist? - set to false to inhibit storing the index on disk, defaults to true"
+  :index-folder   - Folder to persist index in, defaults to system temp folder
+  :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
+                    inhibit the use of previously persisted indices!"
   [_params]
   {:post [(u/db? %)]}
-  (let [params (parse-params _params)
-        serialized-filename (ndio/serialize-db-filename params)]
-    (if (.isFile ^File (io/file serialized-filename))
-      (ndio/parse-db serialized-filename)
-      (ndio/serialize-db serialized-filename (raw-db params)))))
+  (let [{:keys [index-persist?] :as params} (parse-params _params)]
+    (if index-persist?
+      (let [serialized-filename (ndio/serialize-db-filename params)]
+        (if (.isFile ^File (io/file serialized-filename))
+          (ndio/parse-db serialized-filename)
+          (ndio/serialize-db serialized-filename (raw-db params))))
+      (raw-db params))))
 
 (defmulti q
   "Queries a single or multiple docs from the database by a single or

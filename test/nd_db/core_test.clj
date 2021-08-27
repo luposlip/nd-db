@@ -132,7 +132,6 @@
                 :filename "resources/test/test.ndjson"
                 :index-folder folder}
         serialized-filename (ndio/serialize-db-filename params)]
-    (prn 'sfn serialized-filename)
     (io/make-parents (str folder "/null"))
     (try (io/delete-file serialized-filename) (catch Throwable _ nil))
     (is (not (.isFile (io/file serialized-filename))))
@@ -141,3 +140,15 @@
     (is (.isFile (io/file serialized-filename)))
     (testing "Getting a database the second time (deserialization)"
       (is (u/db? (t/db params))))))
+
+(deftest dont-index-persist
+  (let [params {:id-fn by-id
+                :filename "resources/test/test.ndjson"
+                :index-persist? false}
+        serialized-filename (ndio/serialize-db-filename params)]
+    (try (io/delete-file serialized-filename) (catch Throwable _ nil))
+    (is (not (.isFile (io/file serialized-filename))))
+    (testing "Getting a database the first time (incl. serialization)"
+      (is (u/db? (t/db params))))
+    (testing "Index is not persisted"
+      (is (not (.isFile (io/file serialized-filename)))))))
