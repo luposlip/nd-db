@@ -9,7 +9,7 @@
              [util :as u]
              [io :as ndio]])
   (:import [java.util Date]
-           [java.io File]))
+           [java.io File RandomAccessFile]))
 
 (def index-fns
   "In the form {\"filename1\"
@@ -160,7 +160,7 @@
   (let [[start len] (get (:index @db) id)
         bytes (byte-array len)]
     (when (and start len)
-      (doto (java.io.RandomAccessFile. (:filename @db) "r")
+      (doto (RandomAccessFile. ^String (:filename @db) "r")
         (.seek start)
         (.read bytes 0 len)
         (.close))
