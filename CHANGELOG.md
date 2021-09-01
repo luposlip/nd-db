@@ -8,6 +8,12 @@ All notable changes to this project will be documented in this file. This change
 - Utility function to get lazy seq of all indexed IDs
 - Persist index in temp file system for fast future initialization
 
+## [0.5.2] - 2021-09-01
+
+### Fixed
+
+- Bug when using new :id-rx-str as input
+
 ## [0.5.1] - 2021-08-26
 
 ### Fixed

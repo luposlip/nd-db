@@ -94,12 +94,17 @@
              :doc-type (infer-doctype filename)
              :timestamp (Date.)})))
 
-(defn parse-params [{:keys [filename id-fn id-rx-str id-name id-type index-folder index-persist?] :as params}]
+(defn parse-params
+  "Parses input params for intake of raw-db"
+  [{:keys [filename
+           id-fn id-rx-str
+           id-name id-type
+           index-folder index-persist?] :as params}]
   {:pre [(or (fn? id-fn)
              (string? id-rx-str)
              (and id-name id-type))]}
   (assoc (merge (cond id-fn {:id-fn id-fn}
-                      id-rx-str (u/rx-str->id+fn params)
+                      id-rx-str (u/rx-str->id+fn id-rx-str)
                       :else (u/name-type->id+fn params))
                 (when index-folder {:index-folder index-folder}))
          :filename filename

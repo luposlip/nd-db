@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.5.1"]
+[com.luposlip/nd-db "0.5.2"]
 ```
 
 **BREAKING CHANGE!**

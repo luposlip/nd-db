@@ -8,8 +8,10 @@
        (contains? @candidate :filename)
        (contains? @candidate :index)))
 
-(defn name-type->id+fn [{:keys [id-name id-type source-type]
-                         :or {id-type :string}}]
+(defn name-type->id+fn
+  "Generates valid :id-fn input based on :id-name and :id-type"
+  [{:keys [id-name id-type source-type]
+    :or {id-type :string}}]
   {:pre [(string? id-name)]}
   {:idx-id (str id-name (name id-type))
    :id-fn (let [source-type (or source-type id-type)
@@ -29,7 +31,7 @@
                  %))))})
 
 (defn rx-str->id+fn
-  "Generates "[rx-str]
+  "Generates valid :id-fn input based on a regular expression string"
+  [rx-str]
   {:idx-id (str->hash rx-str)
-   :id-fn #(Integer. ^String
-                     (second (re-find (re-pattern rx-str) %)))})
+   :id-fn #(Integer. ^String (second (re-find (re-pattern rx-str) %)))})

@@ -68,22 +68,32 @@
                :data {:datakey "datavalue"}}
               {:id 1
                :data ["some" "semi-random" "data"]}]
-             (into []
-                   (t/q (t/raw-db {:id-fn by-id
-                                   :filename  "resources/test/test.ndjson"})
-                        [333333 1 77])))))
+             (vec
+              (t/q (t/raw-db {:id-fn by-id
+                              :filename  "resources/test/test.ndjson"})
+                   [333333 1 77])))))
     
     (testing "using :id-name and :id-type as params"
       (is (= [{:id 333333
                :data {:datakey "datavalue"}}
               {:id 1
                :data ["some" "semi-random" "data"]}]
-             (into []
-                   (t/q (t/raw-db (t/parse-params {:id-name "id"
-                                                   :id-type :string
-                                                   :source-type :integer
-                                                   :filename  "resources/test/test.ndjson"}))
-                        ["333333" "1" "77"])))))))
+             (vec
+              (t/q (t/raw-db (t/parse-params {:id-name "id"
+                                              :id-type :string
+                                              :source-type :integer
+                                              :filename  "resources/test/test.ndjson"}))
+                   ["333333" "1" "77"])))))
+
+    (testing "using :id-rx-str as param"
+      (is (= [{:id 333333
+               :data {:datakey "datavalue"}}
+              {:id 1
+               :data ["some" "semi-random" "data"]}]
+             (vec
+              (t/q (t/raw-db (t/parse-params {:id-rx-str "^\\{\"id\":(\\d+)"
+                                              :filename  "resources/test/test.ndjson"}))
+                   [333333 1 77])))))))
 
 
 (deftest explicit-index-folder
