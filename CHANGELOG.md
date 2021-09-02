@@ -6,8 +6,27 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - Utility function to get lazy seq of all indexed IDs
-- Persist index in temp file system for fast future initialization
 
+## [0.6.0] - 2021-09-02
+
+`0.6.0` - introducing `.ndnippy`!
+
+### Added
+
+Now you can use `.ndnippy` as database format. It's **MUCH** faster to load than
+`.ndjson` and `.ndedn`, meaning better query times. Particularly when querying multiple documents at once.
+
+Also a new `util` namespace lets you convert from `.ndjson` and `.ndedn` to `.ndnippy`.
+
+`.ndnippy` - like `.ndedn` isn't really a standard. But it probably should be. I implemented the encoding for
+`.ndnippy` myself, it's somewhat naive, but really fast anyhow. If you have ideas on how to make it even
+fast, let me know. Because version `0.6.0` introduces the `.ndnippy` format, it may change several times in the
+future, possibly making old `.ndnippy` files incompatible with new versions. Now you're warned. Thankfully the
+generation of new `.ndnippy` files is quite fast.
+
+NB: `.ndnippy` isn't widely used, and probably isn't a good format for distribution, unless you can distribute
+this `nd-db` library with it!
+  
 ## [0.5.2] - 2021-09-01
 
 ### Fixed

@@ -3,13 +3,8 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.5.2"]
+[com.luposlip/nd-db "0.6.0"]
 ```
-
-**BREAKING CHANGE!**
-
-This library has been renamed from `ndjson-db` to `nd-db`. This includes the primary namespace!
-Furthermore the library identifier now follows Clojars new reverse domain name requirement.
 
 _Newline Delimited (read-only) Databases!_
 
