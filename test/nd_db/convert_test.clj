@@ -1,0 +1,38 @@
+(ns nd-db.convert-test
+  (:require [nd-db
+             [core :as nddb]
+             [io :as ndio]
+             [util :as ndut]
+             [convert :as t]]
+            [clojure.test :refer :all]))
+
+(def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
+
+(deftest ->ndnippy
+  (let [db (nddb/db {:filename "resources/test/test.ndjson"
+                     :id-fn by-id})
+        new-filename "/tmp/test.ndnippy"
+        doc-count (t/->ndnippy db new-filename)]
+    (testing "3 documents have been converted"
+      (is (= 3 doc-count)))
+    (testing "The generated ndnippy database can be used"
+      (let [new-db (nddb/raw-db (ndio/parse-params {:filename new-filename
+                                                    :id-path [:id]}))]
+        (is (ndut/db? new-db))
+        (is (= doc-count (-> @new-db :index keys count)))
+        (is (=  #{1 222 333333} (-> @new-db :index keys set)))))))
+
+(deftest ->ndnippy-db
+  (let [db (nddb/db {:filename "resources/test/test.ndjson"
+                     :id-fn by-id})
+        new-filename "/tmp/test.ndnippy"
+        doc-count (t/->ndnippy db new-filename)]
+    (testing "3 documents have been converted"
+      (is (= 3 doc-count)))
+    (testing "The generated ndnippy database can be used"
+      (let [new-db (nddb/raw-db (ndio/parse-params {:filename new-filename
+                                                    :id-path [:id]}))]
+        (is (ndut/db? new-db))
+        (is (= doc-count (-> @new-db :index keys count)))
+        (is (=  #{1 222 333333} (-> @new-db :index keys set)))))))
+

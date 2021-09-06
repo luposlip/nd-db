@@ -6,8 +6,32 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - Utility function to get lazy seq of all indexed IDs
-- Persist index in temp file system for fast future initialization
 
+## [0.6.0] - 2021-09-06
+
+`0.6.0` - introducing `.ndnippy`!
+
+### Added
+
+Now you can use `.ndnippy` as database format. It's **MUCH** faster to load than
+`.ndjson` and `.ndedn`, meaning better query times. Particularly when querying multiple documents at once.
+
+Also a new `util` namespace lets you convert from `.ndjson` and `.ndedn` to `.ndnippy`.
+
+`.ndnippy` - like `.ndedn` isn't really a standard. But it probably should be. I implemented the encoding for
+`.ndnippy` myself, it's somewhat naive, but really fast anyhow. If you have ideas on how to make it even
+fast, let me know. Because version `0.6.0` introduces the `.ndnippy` format, it may change several times in the
+future, possibly making old `.ndnippy` files incompatible with new versions. Now you're warned. Thankfully the
+generation of new `.ndnippy` files is quite fast.
+
+NB: `.ndnippy` isn't widely used (this is - as far as [I](https://github.com/luposlip) know, the first and only use), and probably isn't a good distribution format, unless you can distribute the `nd-db` library with it.
+
+NB: For small documents (like the ones in the test samples), `.ndnippy` files are actually bigger than their
+json/edn alternatives. Even the Twitter sample `.ndjson` file mentioned in the `README` becomes bigger as
+`.ndnippy`. With the serialization mechanism used right now, the biggest benefits are when the individual documents
+are huge (i.e. 10s of KBs). We've done experiments with methods that actually makes the resulting size the same as
+the input, even for small documents. But there's a huge performance impact to using that, which is counter productive.
+  
 ## [0.5.2] - 2021-09-01
 
 ### Fixed
