@@ -3,13 +3,8 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.5.2"]
+[com.luposlip/nd-db "0.6.0"]
 ```
-
-**BREAKING CHANGE!**
-
-This library has been renamed from `ndjson-db` to `nd-db`. This includes the primary namespace!
-Furthermore the library identifier now follows Clojars new reverse domain name requirement.
 
 _Newline Delimited (read-only) Databases!_
 
@@ -50,6 +45,14 @@ If you want a default `:id-fn` created for you, use the `:id-name` together with
 ### EDN
 
 If you want to read a database of EDN documents, just use `:doc-type :edn`. Please note that the standard `:id-name` and `:id-type` parameters doesn't (as of v0.3.0) work with EDN, hence you need to implement the `:id-fn` accordingly.
+
+### Nippy
+
+Nippy can be used also. Since this is a binary standard, you'd probably start out with a `.ndjson` or `.ndedn` file, and convert it to `.ndnippy` via the `nd-db.convert` namespace. "Why?" you ask. Because of speed. Especially for big documents (10-100s of KBs) the parsing make a huge difference.
+
+Because the nippy-serialized documents are "just" EDN, you can simply give a path for the ID with the `:id-path` parameter. Or of course use the mighty `:id-fn` instead.
+
+There's a sample `resources/test/test.ndnippy` database representing the same data as the `.ndjson` and `.ndedn` samples.
 
 ### Query Single Document
 
@@ -146,6 +149,7 @@ following in a repl:
      (doall
       (nd-db.core/q
        (nd-db.core/db {:id-name "screen_name" 
+	                   :id-type :string
                        :filename "path/to/TU_verified.ndjson"})
        ["katyperry" "ladygaga" "BillGates" "ByMikeWilson"]))))
 ```

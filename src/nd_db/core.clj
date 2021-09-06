@@ -6,17 +6,10 @@
             [clojure.core.reducers :as r]
             [cheshire.core :as json]
             [nd-db
-             [util :as u]
+             [util :as ndut]
              [io :as ndio]])
-  (:import [java.util Date]
+  (:import [java.time Instant]
            [java.io File RandomAccessFile]))
-
-(def index-fns
-  "In the form {\"filename1\"
-                   {\"9298cvoa\" {index-w-first-few-ids-as-str-=-9298cvoa}
-                \"filename2\"
-                   {\"ao3oijf8\" {index-w-first-few-ids-as-str-=-ao3oijf8}}}"
-  (atom {}))
 
 (defn reducr [id-fn]
   (fn [acc line]
@@ -47,25 +40,22 @@
   and as value a vector with 2 values:
   - the start index in the text file to start read EDN for the input doc
   - the length in bytes input doc"
-  [filename idx-id]
-  {:pre [(string? filename)]}
-  (let [id-fn (get-in @index-fns [filename idx-id])]
-    (if (fn? id-fn)
-      (with-open [rdr (io/reader filename)]
-        (->> rdr
-             line-seq ;; for parallel processing, enable line below!
-             ;;(into [])
-             (r/fold (or (when-let [e (System/getenv "NDDB_LINES_PER_CORE")]
-                           (edn/read-string e))
-                         512)
-                     combinr
-                     (reducr id-fn))
-             (reduce
-              (fn [acc i]
-                (assoc acc (first i) (into [] (rest i))))
-              {})))
-      (throw (ex-info "No id-fn found for index" {:filename filename
-                                                  :idx-id idx-id})))))
+  [filename id-fn]
+  {:pre [(string? filename)
+         (fn? id-fn)]}
+  (with-open [rdr (io/reader filename)]
+    (->> rdr
+         line-seq ;; for parallel processing, enable line below!
+         ;;(into [])
+         (r/fold (or (when-let [e (System/getenv "NDDB_LINES_PER_CORE")]
+                       (edn/read-string e))
+                     512)
+                 combinr
+                 (reducr id-fn))
+         (reduce
+          (fn [acc i]
+            (assoc acc (first i) (into [] (rest i))))
+          {}))))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -78,37 +68,18 @@
   (condp = (last (s/split filename #"\."))
     "ndedn" :edn
     "ndjson" :json
+    "ndnippy" :nippy
     :unknown))
 
 (defn raw-db
   "Creates a database var which can be used to perform queries"
   [{:keys [id-fn filename] :as params}]
-  {:pre [(fn? id-fn)
-         (string? filename)]}
-  (let [id-fn (or id-fn (u/name-type->id+fn params))
-        idx-id (index-id {:filename filename :id-fn id-fn})]
-    (when (not (get-in @index-fns [filename idx-id]))
-      (swap! index-fns assoc-in [filename idx-id] id-fn))
+  {:pre [(-> params meta :parsed?)]}
+  (let [doc-type (infer-doctype filename)]
     (future {:filename filename
-             :index (create-index filename idx-id)
-             :doc-type (infer-doctype filename)
-             :timestamp (Date.)})))
-
-(defn parse-params
-  "Parses input params for intake of raw-db"
-  [{:keys [filename
-           id-fn id-rx-str
-           id-name id-type
-           index-folder index-persist?] :as params}]
-  {:pre [(or (fn? id-fn)
-             (string? id-rx-str)
-             (and id-name id-type))]}
-  (assoc (merge (cond id-fn {:id-fn id-fn}
-                      id-rx-str (u/rx-str->id+fn id-rx-str)
-                      :else (u/name-type->id+fn params))
-                (when index-folder {:index-folder index-folder}))
-         :filename filename
-         :index-persist? (not (false? index-persist?))))
+             :index (create-index filename id-fn)
+             :doc-type doc-type
+             :timestamp (str (Instant/now))})))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -132,8 +103,8 @@
   :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
                     inhibit the use of previously persisted indices!"
   [_params]
-  {:post [(u/db? %)]}
-  (let [{:keys [index-persist?] :as params} (parse-params _params)]
+  {:post [(ndut/db? %)]}
+  (let [{:keys [index-persist?] :as params} (ndio/parse-params _params)]
     (if index-persist?
       (let [serialized-filename (ndio/serialize-db-filename params)]
         (if (.isFile ^File (io/file serialized-filename))
@@ -156,11 +127,12 @@
   (condp = (:doc-type @db)
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
+    :nippy (ndio/str-> doc-str)
     (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
 
 (defmethod q :single query-single
   [db id]
-  {:pre [(u/db? db)
+  {:pre [(ndut/db? db)
          (not (nil? id))]}
   (let [[start len] (get (:index @db) id)
         bytes (byte-array len)]
@@ -175,7 +147,7 @@
 
 (defmethod q :sequential query-multiple
   [db ids]
-  {:pre [(u/db? db)
+  {:pre [(ndut/db? db)
          (sequential? ids)]}
   (keep (partial q db) ids))
 
