@@ -23,7 +23,7 @@
 (defn serialize-db [filename db]
   {:pre [(ndut/db? db)]}
   (with-open [os (io/output-stream filename)]
-    (.write os (nippy/freeze @db)))
+    (.write os ^"[B" (nippy/freeze @db)))
   db)
 
 (defn parse-db [filename]

@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file. This change
 
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.6.1] - 2021-09-15
+
+Eliminate a reflective call when serializing the database.
+
 ## [0.6.0] - 2021-09-06
 
 `0.6.0` - introducing `.ndnippy`!

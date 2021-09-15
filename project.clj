@@ -1,4 +1,4 @@
-(defproject com.luposlip/nd-db "0.6.0"
+(defproject com.luposlip/nd-db "0.6.1"
   :description "Clojure library that lets you use newline delimited files as databases. Fast!"
   :url "https://github.com/luposlip/nd-db"
   :license {:name "Apache License, Version 2.0"
@@ -8,4 +8,5 @@
                  [buddy/buddy-core "1.10.1"]
                  [digest "1.4.10"]
                  [cheshire "5.10.1"]]
+  :global-vars {*warn-on-reflection* true}
   :repl-options {:init-ns nd-db.core})
