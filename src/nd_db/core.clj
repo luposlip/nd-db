@@ -1,7 +1,5 @@
 (ns nd-db.core
-  (:require [clojure
-             [string :as s]
-             [edn :as edn]]
+  (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.core.reducers :as r]
             [cheshire.core :as json]
@@ -64,22 +62,14 @@
   (with-open [in (io/reader filename)]
     (mapv id-fn (take 10 (line-seq in)))))
 
-(defn infer-doctype [filename]
-  (condp = (last (s/split filename #"\."))
-    "ndedn" :edn
-    "ndjson" :json
-    "ndnippy" :nippy
-    :unknown))
-
 (defn raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn filename] :as params}]
+  [{:keys [id-fn filename doc-type] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (let [doc-type (infer-doctype filename)]
-    (future {:filename filename
-             :index (create-index filename id-fn)
-             :doc-type doc-type
-             :timestamp (str (Instant/now))})))
+  (future {:filename filename
+           :index (create-index filename id-fn)
+           :doc-type doc-type
+           :timestamp (str (Instant/now))}))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.

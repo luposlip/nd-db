@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file. This change
 
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.6.2] - 2021-09-30
+
+Fix issue when creating index for ndjson/ndedn
+
 ## [0.6.1] - 2021-09-15
 
 Eliminate a reflective call when serializing the database.

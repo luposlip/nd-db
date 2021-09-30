@@ -85,6 +85,13 @@
   {:idx-id (ndut/str->hash rx-str)
    :id-fn #(Integer. ^String (second (re-find (re-pattern rx-str) %)))})
 
+(defn infer-doctype [filename]
+  (condp = (last (s/split filename #"\."))
+    "ndedn" :edn
+    "ndjson" :json
+    "ndnippy" :nippy
+    :unknown))
+
 (defn parse-params
   "Parses input params for intake of raw-db"
   [{:keys [filename
@@ -98,13 +105,22 @@
              (and id-name id-type))]
    :post [#(and (:filename %)
                 (:id-fn %)
-                (:idx-id %))]}
-  (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
-                                        :idx-id ""}
-                                 id-rx-str (rx-str->id+fn id-rx-str)
-                                 id-path (path->id+fn id-path)
-                                 :else (name-type->id+fn params))
-                           (when index-folder {:index-folder index-folder}))
-                    :filename filename
-                    :index-persist? (not (false? index-persist?)))
-    {:parsed? true}))
+                (:idx-id %)
+                (:doc-type %))]}
+  (let [doc-type (infer-doctype filename)]
+    (when (and id-path (not= :nippy doc-type))
+      (throw (ex-info "For performance reasons :id-path param is only allowed for .ndnippy files - recommended instead is explicity :id-fn with a regex (or :id-name and :id-type combo)" params)))
+
+    (when (and id-name id-type (not= :json doc-type))
+      (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
+    
+    (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
+                                          :idx-id ""}
+                                   id-rx-str (rx-str->id+fn id-rx-str)
+                                   id-path (path->id+fn id-path)
+                                   :else (name-type->id+fn params))
+                             (when index-folder {:index-folder index-folder}))
+                      :doc-type doc-type
+                      :filename filename
+                      :index-persist? (not (false? index-persist?)))
+      {:parsed? true})))
