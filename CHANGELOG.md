@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file. This change
 
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.6.3] - 2022-04-07
+
+- Upgrade Clojure 1.10.3 -> 1.11.1
+- Upgraded other dependencies
+- Minor optimizations
+
 ## [0.6.2] - 2021-09-30
 
 Fix issue when creating index for ndjson/ndedn
@@ -39,7 +45,7 @@ json/edn alternatives. Even the Twitter sample `.ndjson` file mentioned in the `
 `.ndnippy`. With the serialization mechanism used right now, the biggest benefits are when the individual documents
 are huge (i.e. 10s of KBs). We've done experiments with methods that actually makes the resulting size the same as
 the input, even for small documents. But there's a huge performance impact to using that, which is counter productive.
-  
+
 ## [0.5.2] - 2021-09-01
 
 ### Fixed
@@ -120,12 +126,3 @@ the input, even for small documents. But there's a huge performance impact to us
 ### Added
 - Initial public release
 - Example on how to query huge datasets
-
-[Unreleased]: https://github.com/luposlip/nd-db/compare/0.4.0...HEAD
-[0.4.0]: https://github.com/luposlip/nd-db/compare/0.3.0...0.4.0
-[0.3.0]: https://github.com/luposlip/nd-db/compare/0.2.2...0.3.0
-[0.2.2]: https://github.com/luposlip/nd-db/compare/0.2.1...0.2.2
-[0.2.1]: https://github.com/luposlip/nd-db/compare/0.2.0...0.2.1
-[0.2.0]: https://github.com/luposlip/nd-db/compare/0.1.2...0.2.0
-[0.1.2]: https://github.com/luposlip/nd-db/compare/0.1.1...0.1.2
-[0.1.1]: https://github.com/luposlip/nd-db/compare/0.1.0...0.1.1

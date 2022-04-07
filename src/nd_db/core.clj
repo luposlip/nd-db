@@ -13,9 +13,7 @@
   (fn [acc line]
     (let [len (count (.getBytes ^String line))
           id (id-fn line)
-          [_ start plen] (if-let [p (peek acc)]
-                           p
-                           [nil -1 0])]
+          [_ start plen] (or (peek acc) [nil -1 0])]
       ;; TODO concat into list for parallelization
       (conj acc [id (+ 1 start plen) len]))))
 
@@ -23,9 +21,7 @@
   ([] []) ;; TODO: Lazify for parallelization
   ([_] [])
   ([acc more]
-   (let [[_ prev-start prev-len] (if-let [p (peek acc)]
-                                   p
-                                   [nil -1 0])
+   (let [[_ prev-start prev-len] (or (peek acc) [nil -1 0])
          prev-offset (+ 1 prev-start prev-len)]
      (reduce
       (fn [a [id old-start len]]
@@ -45,8 +41,8 @@
     (->> rdr
          line-seq ;; for parallel processing, enable line below!
          ;;(into [])
-         (r/fold (or (when-let [e (System/getenv "NDDB_LINES_PER_CORE")]
-                       (edn/read-string e))
+         (r/fold (or (some-> (System/getenv "NDDB_LINESd_PER_CORE")
+                             edn/read-string)
                      512)
                  combinr
                  (reducr id-fn))
@@ -140,4 +136,3 @@
   {:pre [(ndut/db? db)
          (sequential? ids)]}
   (keep (partial q db) ids))
-
