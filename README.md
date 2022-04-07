@@ -169,10 +169,14 @@ than 2 minutes (NB: This is with a single core, and BEFORE 0.4.0).
 
 Since the database uses disk random access, SSD speed up the database significantly.
 
+** Update **
+
+On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 second!
+
 
 ## Copyright & License
 
-Copyright (C) 2019-2021 Henrik Mohr
+Copyright (C) 2019-2022 Henrik Mohr
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
