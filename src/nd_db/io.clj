@@ -94,15 +94,17 @@
 
 (defn parse-params
   "Parses input params for intake of raw-db"
-  [{:keys [filename
-           id-fn id-rx-str
-           id-path
-           id-name id-type
-           index-folder index-persist?] :as params}]
+  [& {:keys [filename
+             id-fn id-rx-str
+             id-path
+             id-name id-type
+             index-folder index-persist?] :as params}]
   {:pre [(or (fn? id-fn)
              (string? id-rx-str)
              (vector? id-path)
-             (and id-name id-type))]
+             (and id-name id-type)
+             (or (nil? filename)
+                 (string? filename)))]
    :post [#(and (:filename %)
                 (:id-fn %)
                 (:idx-id %)
@@ -113,7 +115,7 @@
 
     (when (and id-name id-type (not= :json doc-type))
       (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
-    
+
     (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
                                           :idx-id ""}
                                    id-rx-str (rx-str->id+fn id-rx-str)

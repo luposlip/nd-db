@@ -16,8 +16,8 @@
     (testing "3 documents have been converted"
       (is (= 3 doc-count)))
     (testing "The generated ndnippy database can be used"
-      (let [new-db (nddb/raw-db (ndio/parse-params {:filename new-filename
-                                                    :id-path [:id]}))]
+      (let [new-db (nddb/raw-db (ndio/parse-params :filename new-filename
+                                                   :id-path [:id]))]
         (is (ndut/db? new-db))
         (is (= doc-count (-> @new-db :index keys count)))
         (is (=  #{1 222 333333} (-> @new-db :index keys set)))))))
@@ -35,4 +35,3 @@
         (is (ndut/db? new-db))
         (is (= doc-count (-> @new-db :index keys count)))
         (is (=  #{1 222 333333} (-> @new-db :index keys set)))))))
-

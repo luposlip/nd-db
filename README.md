@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.6.3"]
+[com.luposlip/nd-db "0.7.0"]
 ```
 
 _Newline Delimited (read-only) Databases!_
