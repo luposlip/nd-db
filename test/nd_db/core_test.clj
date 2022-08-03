@@ -12,28 +12,28 @@
 (deftest index-id
   (testing "Index ID"
     (is (= [1 222 333333]
-           (sut/index-id {:filename "resources/test/test.ndjson"
-                         :id-fn by-id})))))
+           (sut/index-id :filename "resources/test/test.ndjson"
+                         :id-fn by-id)))))
 
 (deftest index-id-edn
   (testing "Index ID, EDN edition"
     (is (= [123 231 312]
            (sut/index-id {:filename "resources/test/test.ndedn"
-                         :id-fn #(:id (edn/read-string %))
-                         :doc-type :edn})))))
+                          :id-fn #(:id (edn/read-string %))
+                          :doc-type :edn})))))
 
 (deftest create-index
   (let [{:keys [filename id-fn]}
         {:filename "resources/test/test.ndjson"
          :id-fn by-id}]
-    (testing "Database index" 
+    (testing "Database index"
       (is (= {1 [0 49]
               222 [50 22]
               333333 [73 46]}
              (sut/create-index filename id-fn))))))
 
 (deftest query-single
-  (testing ".ndjson file as random access database for single id" 
+  (testing ".ndjson file as random access database for single id"
     (is (= {:id 222
             :data 42}
            (sut/q (sut/raw-db
@@ -49,7 +49,7 @@
                        :filename "resources/test/test.ndjson"})))))
   (testing "using :id-path as params"
     (is (= [{:id 333333
-             :data {:datakey "datavalue"}} 
+             :data {:datakey "datavalue"}}
             {:id 1
              :data ["some" "semi-random" "data"]}]
            (vec
@@ -79,7 +79,7 @@
               (sut/q (sut/raw-db (ndio/parse-params {:id-fn by-id
                                                      :filename  "resources/test/test.ndjson"}))
                      [333333 1 77])))))
-    
+
     (testing "using :id-name and :id-type as params"
       (is (= [{:id 333333
                :data {:datakey "datavalue"}}
@@ -106,12 +106,12 @@
   (testing ".ndnippy file as random access database"
     (testing "using :id-fn-key and :id-fn as params"
       (is (= [{:id 333333
-               :data {:datakey "datavalue"}} 
+               :data {:datakey "datavalue"}}
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (vec
-              (sut/q (sut/raw-db (ndio/parse-params {:id-path [:id]
-                                                     :filename "resources/test/test.ndnippy"}))
+              (sut/q (sut/raw-db (ndio/parse-params :id-path [:id]
+                                                    :filename "resources/test/test.ndnippy"))
                      [333333 1 77])))))))
 
 (deftest query-edn-raw-db
@@ -125,7 +125,7 @@
   (testing ".ndedn works with :id-rx-str"
     (is (= [{:id 312 :adresse "Adresse 3"}
             {:id 123 :adresse "Adresse 1"}]
-           (vec (sut/q (sut/raw-db (ndio/parse-params {:id-rx-str "^\\{:id (\\d+)" 
+           (vec (sut/q (sut/raw-db (ndio/parse-params {:id-rx-str "^\\{:id (\\d+)"
                                                        :filename "resources/test/test.ndedn"}))
                        [312 100 123]))))))
 

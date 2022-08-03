@@ -41,7 +41,7 @@
     (->> rdr
          line-seq ;; for parallel processing, enable line below!
          ;;(into [])
-         (r/fold (or (some-> (System/getenv "NDDB_LINESd_PER_CORE")
+         (r/fold (or (some-> (System/getenv "NDDB_LINES_PER_CORE")
                              edn/read-string)
                      512)
                  combinr
@@ -54,7 +54,7 @@
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
   of the ID function and the filename."
-  [{:keys [filename id-fn]}]
+  [& {:keys [filename id-fn]}]
   (with-open [in (io/reader filename)]
     (mapv id-fn (take 10 (line-seq in)))))
 
@@ -87,14 +87,16 @@
   :source-type    - If the source-type is different from the ID type to store in the index
   :index-folder   - Folder to persist index in, defaults to system temp folder
   :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
-                    inhibit the use of previously persisted indices!"
-  [_params]
+                    inhibit the use of previously persisted indices!
+  :filename       - .ndnippy input filename (full path)
+  :index-path     - Use with .ndnippy file, docs can be index directly by path vector"
+  [& _params]
   {:post [(ndut/db? %)]}
-  (let [{:keys [index-persist?] :as params} (ndio/parse-params _params)]
+  (let [{:keys [index-persist?] :as params} (apply ndio/parse-params _params)]
     (if index-persist?
       (let [serialized-filename (ndio/serialize-db-filename params)]
         (if (.isFile ^File (io/file serialized-filename))
-          (ndio/parse-db serialized-filename)
+          (ndio/parse-db params serialized-filename)
           (ndio/serialize-db serialized-filename (raw-db params))))
       (raw-db params))))
 

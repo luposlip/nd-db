@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.6.3"]
+[com.luposlip/nd-db "0.7.0"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -37,9 +37,10 @@ database. Behind the scenes this creates an index for you in a background thread
 If you want a default `:id-fn` created for you, use the `:id-name` together with `:id-type` and/or `:source-type`. Both `:id-type` and `:source-type` can be `:string` or `:integer`. `:id-type` is the target type of the indexed ID, whereas `:source-type` is the type in the source `.ndjson` database file. `:source-type` defaults to `:id-type`, and `:id-type` defaults to `:string`:
 
 ```clojure
-(def db (nd-db.core/db {:id-name "id"
-                        :id-type :integer
-                        :filename "resources/test/test.ndjson"}))
+;; Note the clojure 1.11 style params below (v0.7.0+):
+(def db (nd-db.core/db :id-name "id"
+                       :id-type :integer
+                       :filename "resources/test/test.ndjson"}))
 ```
 
 ### EDN
