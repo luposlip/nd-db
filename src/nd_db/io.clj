@@ -26,9 +26,11 @@
     (.write os ^"[B" (nippy/freeze @db)))
   db)
 
-(defn parse-db [filename]
+(defn parse-db [params serialized-filename]
   {:post [(ndut/db? %)]}
-  (future (nippy/thaw-from-file filename)))
+  (future (-> serialized-filename
+              nippy/thaw-from-file
+              (assoc :filename (:filename params)))))
 
 (defn serialize-db-filename [{:keys [filename idx-id index-folder]}]
   (let [db-filename (last (s/split filename (re-pattern File/separator)))

@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. This change
 
 ## [0.7.0] - 2022-08-03
 
+- Make serialized databases portable (not bound to a specific filesystem path)
 - Support for clojure 1.11 keyword function parameters: https://clojure.org/news/2021/03/18/apis-serving-people-and-programs
 - Upgrade dependencies
 

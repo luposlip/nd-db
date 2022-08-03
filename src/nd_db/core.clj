@@ -96,7 +96,7 @@
     (if index-persist?
       (let [serialized-filename (ndio/serialize-db-filename params)]
         (if (.isFile ^File (io/file serialized-filename))
-          (ndio/parse-db serialized-filename)
+          (ndio/parse-db params serialized-filename)
           (ndio/serialize-db serialized-filename (raw-db params))))
       (raw-db params))))
 
