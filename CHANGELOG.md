@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file. This change
 
 - Utility function to get lazy seq of all indexed IDs
 
+## [0.7.1] - 2022-08-03
+
+- Bugfix release, downgrade nippy
+
+Using projects couldn't compile nd-db with nippy version 3.2.0
+
 ## [0.7.0] - 2022-08-03
 
 - Make serialized databases portable (not bound to a specific filesystem path)
