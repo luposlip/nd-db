@@ -172,7 +172,7 @@ Since the database uses disk random access, SSD speed up the database significan
 
 ** Update **
 
-On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 second!
+On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 ms!
 
 
 ## Copyright & License
