@@ -10,7 +10,7 @@ _Newline Delimited (read-only) Databases!_
 
 Clojure library that treats lines in newline delimited (potentially humongous) files as simple (thus lightening fast) databases.
 
-`nd-db` currently works with JSON documents in [.ndjson](http://ndjson.org/) files, and EDN documents in `.ndedn`.
+`nd-db` currently works with JSON documents in [.ndjson](http://ndjson.org/) files, and EDN documents in `.ndedn`. It also supports binary [nippy](https://github.com/ptaoussanis/nippy) encoded EDN documents.
 
 ## Usage
 
