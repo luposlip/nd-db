@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - Utility function to get lazy seq of all indexed IDs
+- CSV as database files
+- Insert
+
+## [0.7.2] - 2022-12-07
+
+- Updated nippy
 
 ## [0.7.1] - 2022-08-03
 
