@@ -156,3 +156,13 @@
       (is (ndut/db? (sut/db params))))
     (testing "Index is not persisted"
       (is (not (.isFile (io/file serialized-filename)))))))
+
+(deftest lazy-docs
+  (let [db (sut/raw-db
+            (ndio/parse-params :id-path [:id]
+                               :filename "resources/test/test.ndnippy"))
+        docs (sut/lazy-docs db)]
+
+    (is (= clojure.lang.LazySeq (type docs)))
+    (is (map? (first docs)))
+    (is (= 3 (count docs)))))

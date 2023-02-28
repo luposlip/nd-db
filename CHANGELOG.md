@@ -5,9 +5,14 @@ All notable changes to this project will be documented in this file. This change
 
 ### TODO
 
-- Utility function to get lazy seq of all indexed IDs
 - CSV as database files
 - Insert
+
+## [0.8.0] - 2023-02-28
+
+### Added
+
+- Utility function to get lazy seq of all indexed IDs: `nd-db.io/lazy-docs`
 
 ## [0.7.2] - 2022-12-07
 

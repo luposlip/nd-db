@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.7.2"]
+[com.luposlip/nd-db "0.8.0"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -177,7 +177,7 @@ On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 ms!
 
 ## Copyright & License
 
-Copyright (C) 2019-2022 Henrik Mohr
+Copyright (C) 2019-2023 Henrik Mohr
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

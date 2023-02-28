@@ -1,5 +1,5 @@
-(defproject com.luposlip/nd-db "0.7.2"
-  :description "Clojure library that lets you use newline delimited files as databases. Fast!"
+(defproject com.luposlip/nd-db "0.8.0"
+  :description "Clojure library to use newline delimited files as fast read-only databases."
   :url "https://github.com/luposlip/nd-db"
   :license {:name "Apache License, Version 2.0"
             :url "https://www.apache.org/licenses/LICENSE-2.0"}

@@ -138,3 +138,14 @@
   {:pre [(ndut/db? db)
          (sequential? ids)]}
   (keep (partial q db) ids))
+
+(defn lazy-docs
+  ([db]
+   (let [ids (:index @db)]
+     (lazy-docs db (lazy-seq ids))))
+  ([db ids]
+   (lazy-seq
+    (when (seq ids)
+      (let [doc (q db (ffirst ids))]
+        (cons doc
+              (lazy-docs db (rest ids))))))))
