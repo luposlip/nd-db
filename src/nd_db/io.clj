@@ -2,7 +2,6 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [taoensso.nippy :as nippy]
-            [buddy.core.codecs :as c]
             digest
             [nd-db.util :as ndut])
   (:import [java.io File Writer]))
@@ -15,10 +14,10 @@
       (digest/md5 (s/join input)))))
 
 (defn ->str [data]
-  (-> data nippy/freeze c/bytes->b64 c/bytes->str))
+  (nippy/freeze-to-string data))
 
 (defn str-> [data-str]
-  (-> data-str c/str->bytes c/b64->bytes nippy/thaw))
+  (-> data-str nippy/thaw-from-file))
 
 (defn serialize-db [filename db]
   {:pre [(ndut/db? db)]}

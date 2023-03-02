@@ -8,6 +8,32 @@ All notable changes to this project will be documented in this file. This change
 - CSV as database files
 - Insert
 
+## [0.9.0] - 2023-03-03
+
+### (almost) breaking changes
+
+- new format for metadata/index `.nddbmeta` file
+
+The new format makes it much faster to initialize and sequentially read through
+the whole database. The change will make the most impact for humongous databases
+with millions of huge documents.
+
+Old indexes will not be readable anymore. Good news is that there's a new
+`nd-db.util/migrate-nddbmeta!` utility function, which will automatically be
+called if the old index can't be read. This converts your old file to the new
+format, and overwrites it.
+
+### Other changes
+
+- because of the change to the metadata format, the `lazy-docs` introduced with
+`v0.8.0` is now much more efficient. Again this is most noticable when you need
+to read sequentially through parts of a huge database.
+
+### Removed
+
+Dependency `buddy/buddy-core` not needed anymore. Instead using built-in similar
+functionality from `com.taoensso/nippy`.
+
 ## [0.8.0] - 2023-02-28
 
 ### Added
