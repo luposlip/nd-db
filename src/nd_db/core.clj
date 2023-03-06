@@ -1,71 +1,35 @@
 (ns nd-db.core
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.core.reducers :as r]
             [cheshire.core :as json]
             [nd-db
              [util :as ndut]
-             [io :as ndio]])
-  (:import [java.time Instant]
-           [java.io File RandomAccessFile]))
+             [io :as ndio]
+             [index :as ndix]])
+  (:import [java.io File RandomAccessFile]))
 
-(defn reducr [id-fn]
-  (fn [acc line]
-    (let [len (count (.getBytes ^String line))
-          id (id-fn line)
-          [_ start plen] (or (peek acc) [nil -1 0])]
-      ;; TODO concat into list for parallelization
-      (conj acc [id (+ 1 start plen) len]))))
+(defn- parse-doc [db doc-str]
+  (condp = (:doc-type @db)
+    :json (json/parse-string doc-str true)
+    :edn (edn/read-string doc-str)
+    :nippy (ndio/str-> doc-str)
+    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
 
-(defn combinr
-  ([] []) ;; TODO: Lazify for parallelization
-  ([_] [])
-  ([acc more]
-   (let [[_ prev-start prev-len] (or (peek acc) [nil -1 0])
-         prev-offset (+ 1 prev-start prev-len)]
-     (reduce
-      (fn [a [id old-start len]]
-        (conj a [id (+ prev-offset old-start) len]))
-      acc
-      more))))
-
-(defn create-index
-  "Builds up an index of Entity IDs as keys (IDs extracted with id-fn),
-  and as value a vector with 2 values:
-  - the start index in the text file to start read EDN for the input doc
-  - the length in bytes input doc"
-  [filename id-fn]
-  {:pre [(string? filename)
-         (fn? id-fn)]}
-  (with-open [rdr (io/reader filename)]
-    (->> rdr
-         line-seq ;; for parallel processing, enable line below!
-         ;;(into [])
-         (r/fold (or (some-> (System/getenv "NDDB_LINES_PER_CORE")
-                             edn/read-string)
-                     512)
-                 combinr
-                 (reducr id-fn))
-         (reduce
-          (fn [acc i]
-            (assoc acc (first i) (into [] (rest i))))
-          {}))))
-
-(defn index-id
-  "This function generates a pseudo unique index ID for the combination
-  of the ID function and the filename."
-  [& {:keys [filename id-fn]}]
-  (with-open [in (io/reader filename)]
-    (mapv id-fn (take 10 (line-seq in)))))
-
-(defn raw-db
+(defn- raw-db
   "Creates a database var which can be used to perform queries"
   [{:keys [id-fn filename doc-type] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (future {:filename filename
-           :index (create-index filename id-fn)
-           :doc-type doc-type
-           :timestamp (str (Instant/now))}))
+  (future (let [index (ndix/create-index filename id-fn)]
+            {:filename filename
+             :index index
+             :doc-type doc-type
+             :timestamp (-> index meta :timestamp str)})))
+
+(defn- persisted-db [params]
+  (let [serialized-filename (ndio/serialize-db-filename params)]
+    (if (.isFile ^File (io/file serialized-filename))
+      (ndio/parse-db params serialized-filename)
+      (ndio/serialize-db serialized-filename (raw-db params)))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -94,10 +58,7 @@
   {:post [(ndut/db? %)]}
   (let [{:keys [index-persist?] :as params} (apply ndio/parse-params _params)]
     (if index-persist?
-      (let [serialized-filename (ndio/serialize-db-filename params)]
-        (if (.isFile ^File (io/file serialized-filename))
-          (ndio/parse-db params serialized-filename)
-          (ndio/serialize-db serialized-filename (raw-db params))))
+      (persisted-db params)
       (raw-db params))))
 
 (defmulti q
@@ -110,13 +71,6 @@
           p
           :single
           :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
-
-(defn parse-doc [db doc-str]
-  (condp = (:doc-type @db)
-    :json (json/parse-string doc-str true)
-    :edn (edn/read-string doc-str)
-    :nippy (ndio/str-> doc-str)
-    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
 
 (defmethod q :single query-single
   [db id]
