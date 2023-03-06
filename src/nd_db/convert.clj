@@ -9,7 +9,7 @@
 
 (defn ->ndnippy
   "Converts .ndjson and .ndedn files to .ndnippy.
-  
+
   .ndnippy is MUCH faster (~10x) and requires less memory to process.
 
   Also the resulting database size _CAN BE_ much smaller:
@@ -70,5 +70,3 @@
                             keys))))
      :doc-type :nippy
      :timestamp (str (Instant/now))}))
-
-

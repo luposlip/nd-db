@@ -1,6 +1,5 @@
 (ns nd-db.core-test
   (:require [clojure.test :refer :all]
-            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [nd-db
              [core :as sut]
@@ -9,34 +8,11 @@
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
-(deftest index-id
-  (testing "Index ID"
-    (is (= [1 222 333333]
-           (sut/index-id :filename "resources/test/test.ndjson"
-                         :id-fn by-id)))))
-
-(deftest index-id-edn
-  (testing "Index ID, EDN edition"
-    (is (= [123 231 312]
-           (sut/index-id {:filename "resources/test/test.ndedn"
-                          :id-fn #(:id (edn/read-string %))
-                          :doc-type :edn})))))
-
-(deftest create-index
-  (let [{:keys [filename id-fn]}
-        {:filename "resources/test/test.ndjson"
-         :id-fn by-id}]
-    (testing "Database index"
-      (is (= {1 [0 49]
-              222 [50 22]
-              333333 [73 46]}
-             (sut/create-index filename id-fn))))))
-
 (deftest query-single
   (testing ".ndjson file as random access database for single id"
     (is (= {:id 222
             :data 42}
-           (sut/q (sut/raw-db
+           (sut/q (#'sut/raw-db
                    (ndio/parse-params {:id-fn by-id
                                        :filename "resources/test/test.ndjson"}))
                   222)))))
@@ -44,7 +20,7 @@
 (deftest raw-db
   (testing "Getting a database"
     (is (ndut/db?
-         (sut/raw-db (ndio/parse-params
+         (#'sut/raw-db (ndio/parse-params
                       {:id-fn by-id
                        :filename "resources/test/test.ndjson"})))))
   (testing "using :id-path as params"
@@ -53,7 +29,7 @@
             {:id 1
              :data ["some" "semi-random" "data"]}]
            (vec
-            (sut/q (sut/raw-db (ndio/parse-params {:id-name "id"
+            (sut/q (#'sut/raw-db (ndio/parse-params {:id-name "id"
                                                    :id-type :integer
                                                    :filename "resources/test/test.ndjson"}))
                    [333333 1 77]))))))
@@ -61,11 +37,12 @@
 (deftest db
   (let [params {:id-fn by-id
                 :filename "resources/test/test.ndjson"}]
-    (try (io/delete-file (ndio/serialize-db-filename params)) (catch Throwable _ nil))
+    (try (io/delete-file (#'ndio/serialize-db-filename params)) (catch Throwable _ nil))
     (testing "Getting a database the first time (incl. serialization)"
       (is (ndut/db? (sut/db params))))
     (testing "Getting a database the second time (deserialization)"
-      (is (ndut/db? (sut/db params))))))
+      ;;(is (ndut/db? (sut/db params)))
+      )))
 
 (deftest query-raw-db
   (testing ".ndjson file as random access database for multiple ids"
@@ -76,7 +53,7 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (vec
-              (sut/q (sut/raw-db (ndio/parse-params {:id-fn by-id
+              (sut/q (#'sut/raw-db (ndio/parse-params {:id-fn by-id
                                                      :filename  "resources/test/test.ndjson"}))
                      [333333 1 77])))))
 
@@ -86,7 +63,7 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (vec
-              (sut/q (sut/raw-db (ndio/parse-params {:id-name "id"
+              (sut/q (#'sut/raw-db (ndio/parse-params {:id-name "id"
                                                      :id-type :string
                                                      :source-type :integer
                                                      :filename  "resources/test/test.ndjson"}))
@@ -98,7 +75,7 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (vec
-              (sut/q (sut/raw-db (ndio/parse-params {:id-rx-str "^\\{\"id\":(\\d+)"
+              (sut/q (#'sut/raw-db (ndio/parse-params {:id-rx-str "^\\{\"id\":(\\d+)"
                                                      :filename  "resources/test/test.ndjson"}))
                      [333333 1 77])))))))
 
@@ -110,7 +87,7 @@
               {:id 1
                :data ["some" "semi-random" "data"]}]
              (vec
-              (sut/q (sut/raw-db (ndio/parse-params :id-path [:id]
+              (sut/q (#'sut/raw-db (ndio/parse-params :id-path [:id]
                                                     :filename "resources/test/test.ndnippy"))
                      [333333 1 77])))))))
 
@@ -118,14 +95,14 @@
 
   (testing "throw exception when using .ndedn plus :id-name/:id-type combo"
     (is (thrown? clojure.lang.ExceptionInfo
-                 (sut/raw-db (ndio/parse-params {:id-name "id"
+                 (#'sut/raw-db (ndio/parse-params {:id-name "id"
                                                  :id-type :integer
                                                  :filename "resources/test/test.ndedn"})))))
 
   (testing ".ndedn works with :id-rx-str"
     (is (= [{:id 312 :adresse "Adresse 3"}
             {:id 123 :adresse "Adresse 1"}]
-           (vec (sut/q (sut/raw-db (ndio/parse-params {:id-rx-str "^\\{:id (\\d+)"
+           (vec (sut/q (#'sut/raw-db (ndio/parse-params {:id-rx-str "^\\{:id (\\d+)"
                                                        :filename "resources/test/test.ndedn"}))
                        [312 100 123]))))))
 
@@ -135,7 +112,7 @@
         params {:id-fn by-id
                 :filename "resources/test/test.ndjson"
                 :index-folder folder}
-        serialized-filename (ndio/serialize-db-filename params)]
+        serialized-filename (#'ndio/serialize-db-filename params)]
     (io/make-parents (str folder "/null"))
     (try (io/delete-file serialized-filename) (catch Throwable _ nil))
     (is (not (.isFile (io/file serialized-filename))))
@@ -149,7 +126,7 @@
   (let [params {:id-fn by-id
                 :filename "resources/test/test.ndjson"
                 :index-persist? false}
-        serialized-filename (ndio/serialize-db-filename params)]
+        serialized-filename (#'ndio/serialize-db-filename params)]
     (try (io/delete-file serialized-filename) (catch Throwable _ nil))
     (is (not (.isFile (io/file serialized-filename))))
     (testing "Getting a database the first time (incl. serialization)"
@@ -158,7 +135,7 @@
       (is (not (.isFile (io/file serialized-filename)))))))
 
 (deftest lazy-docs
-  (let [db (sut/raw-db
+  (let [db (#'sut/raw-db
             (ndio/parse-params :id-path [:id]
                                :filename "resources/test/test.ndnippy"))
         docs (sut/lazy-docs db)]

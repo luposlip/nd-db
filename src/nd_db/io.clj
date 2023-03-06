@@ -3,33 +3,76 @@
             [clojure.string :as s]
             [taoensso.nippy :as nippy]
             digest
-            [nd-db.util :as ndut])
-  (:import [java.io File Writer]))
+            [nd-db
+             [util :as ndut]
+             [index :as ndix]])
+  (:import [java.io File Writer BufferedWriter FileWriter]))
 
-(defn ndfile-md5
+(defn- ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
   [filename]
   (with-open [r (io/reader filename)]
-    (let [input (take 10 (line-seq r))]
+    (let [input (take 100 (line-seq r))]
       (digest/md5 (s/join input)))))
 
-(defn ->str [data]
+(defn ->str ^String [data]
   (nippy/freeze-to-string data))
 
 (defn str-> [data-str]
-  (-> data-str nippy/thaw-from-file))
+  (nippy/thaw-from-string ^String data-str))
 
-(defn serialize-db [filename db]
-  {:pre [(ndut/db? db)]}
-  (with-open [os (io/output-stream filename)]
-    (.write os ^"[B" (nippy/freeze @db)))
+(defn- write-nippy-ln
+  "Writes data as a base64 encoded line to buffered writer"
+  [^BufferedWriter bwr data]
+  (doto bwr
+    (.write (->str data))
+    (.newLine)))
+
+(defn serialize-db
+  "nd-db metadata format v0.9.0+"
+  [filename db]
+  (with-open [bwr ^BufferedWriter (BufferedWriter. (FileWriter. ^String filename))]
+    ;; writing to EDN string takes ~5x longer than using nippy+b64
+    (write-nippy-ln bwr (dissoc @db :index))
+    (doseq [[id [from len]] (seq (:index @db))]
+      (write-nippy-ln bwr [id [from len]])))
   db)
 
-(defn parse-db [params serialized-filename]
+(defn- maybe-update-filename [d filename]
+  (let [{org-filename :filename} d]
+    (if-not (= org-filename filename)
+      (-> d
+          (update-keys #(if (= :filename %) :org-filename %))
+          (assoc :filename filename))
+      d)))
+
+(defn- _parse-db
+  "Parse nd-db metadata format pre v0.9.0"
+  [{:keys [filename]} serialized-filename]
   {:post [(ndut/db? %)]}
   (future (-> serialized-filename
               nippy/thaw-from-file
-              (assoc :filename (:filename params)))))
+              (maybe-update-filename filename))))
+
+(defn parse-db
+  "Parse nd-db metadata format v0.9.0+"
+  [{:keys [filename] :as params} serialized-filename]
+  {:post [(ndut/db? %)]}
+  (future
+    (try
+      (with-open [r (io/reader serialized-filename)]
+        (let [[meta & idx] (line-seq r)]
+          (-> meta
+              str->
+              (assoc :index (->> idx
+                                 (map str->)
+                                 (into {})))
+              (maybe-update-filename filename))))
+      (catch Exception e
+        (when (s/includes? (ex-message e) "base64")
+          ;; fallback to pre v0.9.0 metadata standard
+          (deref
+           (_parse-db params serialized-filename)))))))
 
 (defn serialize-db-filename [{:keys [filename idx-id index-folder]}]
   (let [db-filename (last (s/split filename (re-pattern File/separator)))
@@ -51,7 +94,7 @@
         (.flush))
       (count data-str))))
 
-(defn name-type->id+fn
+(defn- name-type->id+fn
   "Generates valid :id-fn input based on :id-name and :id-type"
   [{:keys [id-name id-type source-type]
     :or {id-type :string}}]
@@ -73,20 +116,20 @@
                    (re-pattern (format "%s\":%s" id-name source-pattern))
                    %))))}))
 
-(defn path->id+fn
+(defn- path->id+fn
   "Generates valid :id-fn input based on :id-path (.ndnippy only!)"
   [id-path]
   {:pre [(vector? id-path)]}
   {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
    :id-fn #(-> % str-> (get-in id-path))})
 
-(defn rx-str->id+fn
+(defn- rx-str->id+fn
   "Generates valid :id-fn input based on a regular expression string"
   [rx-str]
   {:idx-id (ndut/str->hash rx-str)
    :id-fn #(Integer. ^String (second (re-find (re-pattern rx-str) %)))})
 
-(defn infer-doctype [filename]
+(defn- infer-doctype [filename]
   (condp = (last (s/split filename #"\."))
     "ndedn" :edn
     "ndjson" :json

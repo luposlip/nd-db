@@ -4,6 +4,7 @@
   (.hashCode ^String in))
 
 (defn db? [candidate]
-  (and (future? candidate)
-       (contains? @candidate :filename)
-       (contains? @candidate :index)))
+  (boolean
+   (and (future? candidate)
+        (contains? @candidate :filename)
+        (contains? @candidate :index))))
