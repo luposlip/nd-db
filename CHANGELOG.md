@@ -6,9 +6,11 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - CSV as database files
-- Insert
+- Append documents
 
-## [0.9.0] - 2023-03-03
+## [0.9.0-alpha1] - 2023-03-07
+
+WIP! `lazy-docs` might change signature when using the new `index-reader`!
 
 ### (almost) breaking changes
 
@@ -18,10 +20,9 @@ The new format makes it much faster to initialize and sequentially read through
 the whole database. The change will make the most impact for humongous databases
 with millions of huge documents.
 
-Old indexes will not be readable anymore. Good news is that there's a new
-`nd-db.util/migrate-nddbmeta!` utility function, which will automatically be
-called if the old index can't be read. This converts your old file to the new
-format, and overwrites it.
+Old indexes will not be readable anymore. Good news is that there will be a new
+`nd-db.convert/upgrade-nddbmeta!` utility function, which can converts your old
+file to the new format, and overwrite it.
 
 ### Other changes
 

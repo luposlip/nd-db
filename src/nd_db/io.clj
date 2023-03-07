@@ -28,10 +28,12 @@
 
 (defn serialize-db
   "nd-db metadata format v0.9.0+"
-  [filename db]
-  (with-open [bwr ^BufferedWriter (BufferedWriter. (FileWriter. ^String filename))]
+  [db]
+  (with-open [bwr ^BufferedWriter (BufferedWriter.
+                                   (FileWriter. ^String
+                                                (:serialized-filename @db)))]
     ;; writing to EDN string takes ~5x longer than using nippy+b64
-    (write-nippy-ln bwr (dissoc @db :index))
+    (write-nippy-ln bwr (dissoc @db :index :id-fn))
     (doseq [[id [from len]] (seq (:index @db))]
       (write-nippy-ln bwr [id [from len]])))
   db)

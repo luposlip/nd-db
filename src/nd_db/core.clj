@@ -17,21 +17,23 @@
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn filename doc-type idx-id] :as params}]
+  [{:keys [id-fn filename] :as params}]
   {:pre [(-> params meta :parsed?)]}
   (future (let [index (ndix/create-index filename id-fn)]
-            {:filename filename
-             :index index
-             :doc-type doc-type
-             :timestamp (-> index meta :timestamp str)
-             :idx-id idx-id
-             :version "0.9.0+"})))
+            (-> params
+                (dissoc id-fn)
+                (assoc :timestamp (-> index meta :timestamp str)
+                       :version "0.9.0+"
+                       :index index)))))
 
 (defn- persisted-db [params]
   (let [serialized-filename (ndio/serialize-db-filename params)]
     (if (.isFile ^File (io/file serialized-filename))
       (ndio/parse-db params serialized-filename)
-      (ndio/serialize-db serialized-filename (raw-db params)))))
+      (ndio/serialize-db
+       (raw-db
+        (assoc params
+               :serialized-filename serialized-filename))))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -115,23 +117,24 @@
        (cons doc
              (lazy-docs-db db (rest ids)))))))
 
-(defn- lazy-docs-index-reader [doc-parser ^BufferedReader reader]
+(defn- lazy-docs-index-reader [db idx-parser ^BufferedReader reader]
   (when-let [line (.readLine reader)]
-    (cons (doc-parser line) (lazy-docs-index-reader doc-parser reader))))
+    (cons (->> line idx-parser first (q db)) (lazy-docs-index-reader db idx-parser reader))))
 
 (defmulti lazy-docs
-  (fn [p]
+  (fn [p & _]
     (cond (ndut/db? p) :db
           (instance? BufferedReader p) :index-reader
           :else (throw (ex-info "Unable to create lazy seq of docs with input"
                                 {:param p
                                  :type (type p)})))))
 
-(defmethod lazy-docs :db [db]
+(defmethod lazy-docs :db [db & _]
   (lazy-docs-db db (lazy-seq (:index @db))))
 
-(defmethod lazy-docs :index-reader [index-reader]
-  (lazy-docs-index-reader ndio/str-> index-reader))
+(defmethod lazy-docs :index-reader [index-reader & [db]]
+  {:pre [(ndut/db? db)]}
+  (lazy-docs-index-reader db ndio/str-> index-reader))
 
 (defn index-reader
   "Returns a BufferedReader of the database index.
@@ -140,13 +143,11 @@
   {:post [(instance? BufferedReader %)]}
   (when-not (and (:idx-id @db)
                  (= :nippy (:doc-type @db))
-                 (:version @db))
+                 (:version @db)
+                 (:serialized-filename @db))
     (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
 Consider converting the index (or delete it, which will auto-recreate it)."
                     (dissoc @db :index))))
-  (let [sfn (ndio/serialize-db-filename @db)
-        r (BufferedReader.
-           (FileReader.
-            sfn))]
-    (.readLine r)
+  (let [r (BufferedReader. (FileReader. ^String (:serialized-filename @db)))]
+    (.readLine r) ;; first line isn't part of the index
     r))
