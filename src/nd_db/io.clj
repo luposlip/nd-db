@@ -3,16 +3,14 @@
             [clojure.string :as s]
             [taoensso.nippy :as nippy]
             digest
-            [nd-db
-             [util :as ndut]
-             [index :as ndix]])
+            [nd-db.util :as ndut])
   (:import [java.io File Writer BufferedWriter FileWriter]))
 
 (defn- ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
   [filename]
   (with-open [r (io/reader filename)]
-    (let [input (take 100 (line-seq r))]
+    (let [input (take 10 (line-seq r))]
       (digest/md5 (s/join input)))))
 
 (defn ->str ^String [data]
@@ -69,12 +67,13 @@
                                  (into {})))
               (maybe-update-filename filename))))
       (catch Exception e
-        (when (s/includes? (ex-message e) "base64")
+        (when (or (-> e ex-message (s/includes? "String.getBytes"))
+                  (s/includes? (ex-message e) "base64"))
           ;; fallback to pre v0.9.0 metadata standard
           (deref
            (_parse-db params serialized-filename)))))))
 
-(defn serialize-db-filename [{:keys [filename idx-id index-folder]}]
+(defn serialize-db-filename ^String [{:keys [filename idx-id index-folder]}]
   (let [db-filename (last (s/split filename (re-pattern File/separator)))
         db-md5 (ndfile-md5 filename)]
     (str (or index-folder (System/getProperty "java.io.tmpdir"))

@@ -6,24 +6,26 @@
              [util :as ndut]
              [io :as ndio]
              [index :as ndix]])
-  (:import [java.io File RandomAccessFile]))
+  (:import [java.io File RandomAccessFile FileReader BufferedReader]))
 
-(defn- parse-doc [db doc-str]
-  (condp = (:doc-type @db)
+(defn parse-doc [db doc-str]
+  (case (:doc-type @db)
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
     :nippy (ndio/str-> doc-str)
-    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
+    :else (throw (ex-info "Unknown doc-type" {:doc-type @db}))))
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn filename doc-type] :as params}]
+  [{:keys [id-fn filename doc-type idx-id] :as params}]
   {:pre [(-> params meta :parsed?)]}
   (future (let [index (ndix/create-index filename id-fn)]
             {:filename filename
              :index index
              :doc-type doc-type
-             :timestamp (-> index meta :timestamp str)})))
+             :timestamp (-> index meta :timestamp str)
+             :idx-id idx-id
+             :version "0.9.0+"})))
 
 (defn- persisted-db [params]
   (let [serialized-filename (ndio/serialize-db-filename params)]
@@ -89,17 +91,62 @@
 
 (defmethod q :sequential query-multiple
   [db ids]
-  {:pre [(ndut/db? db)
-         (sequential? ids)]}
+  {:pre [(sequential? ids)]}
   (keep (partial q db) ids))
 
-(defn lazy-docs
-  ([db]
-   (let [ids (:index @db)]
-     (lazy-docs db (lazy-seq ids))))
-  ([db ids]
-   (lazy-seq
-    (when (seq ids)
-      (let [doc (q db (ffirst ids))]
-        (cons doc
-              (lazy-docs db (rest ids))))))))
+(defn warn-legacy []
+  (println
+   "WARN: "))
+
+(defn- lazy-docs-db
+  "This will work for any database metadata version.
+   If no metadata exist, that will be generated first (which may take a while
+   for big databases).
+
+   Furthermore huge databases will have their index realized, before returning
+   the lazy seq of documents.
+
+   If this is not wanted, get a with-open a nd-db.io/db->reader+parser and call
+   lazy-docs with that."
+  [db ids]
+  (lazy-seq
+   (when (seq ids)
+     (let [doc (q db (ffirst ids))]
+       (cons doc
+             (lazy-docs-db db (rest ids)))))))
+
+(defn- lazy-docs-index-reader [doc-parser ^BufferedReader reader]
+  (when-let [line (.readLine reader)]
+    (cons (doc-parser line) (lazy-docs-index-reader doc-parser reader))))
+
+(defmulti lazy-docs
+  (fn [p]
+    (cond (ndut/db? p) :db
+          (instance? BufferedReader p) :index-reader
+          :else (throw (ex-info "Unable to create lazy seq of docs with input"
+                                {:param p
+                                 :type (type p)})))))
+
+(defmethod lazy-docs :db [db]
+  (lazy-docs-db db (lazy-seq (:index @db))))
+
+(defmethod lazy-docs :index-reader [index-reader]
+  (lazy-docs-index-reader ndio/str-> index-reader))
+
+(defn index-reader
+  "Returns a BufferedReader of the database index.
+   Use this in a with-open block (or close it explicitly when done)!"
+  ^BufferedReader [db]
+  {:post [(instance? BufferedReader %)]}
+  (when-not (and (:idx-id @db)
+                 (= :nippy (:doc-type @db))
+                 (:version @db))
+    (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
+Consider converting the index (or delete it, which will auto-recreate it)."
+                    (dissoc @db :index))))
+  (let [sfn (ndio/serialize-db-filename @db)
+        r (BufferedReader.
+           (FileReader.
+            sfn))]
+    (.readLine r)
+    r))
