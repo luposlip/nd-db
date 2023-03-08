@@ -3,10 +3,10 @@
             [clojure.java.io :as io]
             [cheshire.core :as json]
             [nd-db
-             [util :as ndut]
              [io :as ndio]
-             [index :as ndix]])
-  (:import [java.io File RandomAccessFile FileReader BufferedReader]))
+             [index :as ndix]
+             [util :as ndut]])
+  (:import [java.io File RandomAccessFile BufferedReader]))
 
 (defn parse-doc [db doc-str]
   (case (:doc-type @db)
@@ -17,7 +17,7 @@
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn filename] :as params}]
+  [& {:keys [id-fn filename] :as params}]
   {:pre [(-> params meta :parsed?)]}
   (future (let [index (ndix/create-index filename id-fn)]
             (-> params
@@ -76,31 +76,32 @@
           :single
           :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
 
+(defn read-nd-doc
+  "Takes a doc-parser fn, a nd-db file and start and length.
+   Return the document."
+  [doc-parser ^File db-file start len]
+  (when (and start len)
+    (let [bytes (byte-array len)]
+      (doto (RandomAccessFile. db-file "r")
+        (.seek start)
+        (.read bytes 0 len)
+        (.close))
+      (doc-parser (String. bytes)))))
+
 (defmethod q :single query-single
   [db id]
   {:pre [(ndut/db? db)
          (not (nil? id))]}
   (let [[start len] (get (:index @db) id)
-        bytes (byte-array len)]
-    (when (and start len)
-      (doto (RandomAccessFile. ^String (:filename @db) "r")
-        (.seek start)
-        (.read bytes 0 len)
-        (.close))
-      (->> bytes
-           (String.)
-           (parse-doc db)))))
+        nd-file (io/file ^String (:filename @db))]
+    (read-nd-doc (partial parse-doc db) nd-file start len)))
 
 (defmethod q :sequential query-multiple
   [db ids]
   {:pre [(sequential? ids)]}
   (keep (partial q db) ids))
 
-(defn warn-legacy []
-  (println
-   "WARN: "))
-
-(defn- lazy-docs-db
+(defn- lazy-docs-eager-idx
   "This will work for any database metadata version.
    If no metadata exist, that will be generated first (which may take a while
    for big databases).
@@ -115,39 +116,21 @@
    (when (seq ids)
      (let [doc (q db (ffirst ids))]
        (cons doc
-             (lazy-docs-db db (rest ids)))))))
+             (lazy-docs-eager-idx db (rest ids)))))))
 
-(defn- lazy-docs-index-reader [db idx-parser ^BufferedReader reader]
+(defn- lazy-docs-lazy-idx [nippy-parser nd-file ^BufferedReader reader]
   (when-let [line (.readLine reader)]
-    (cons (->> line idx-parser first (q db)) (lazy-docs-index-reader db idx-parser reader))))
+    (cons (let [[_ [start len]] (nippy-parser line)]
+            (read-nd-doc nippy-parser nd-file start len))
+          (lazy-docs-lazy-idx nippy-parser nd-file reader))))
 
-(defmulti lazy-docs
-  (fn [p & _]
-    (cond (ndut/db? p) :db
-          (instance? BufferedReader p) :index-reader
-          :else (throw (ex-info "Unable to create lazy seq of docs with input"
-                                {:param p
-                                 :type (type p)})))))
-
-(defmethod lazy-docs :db [db & _]
-  (lazy-docs-db db (lazy-seq (:index @db))))
-
-(defmethod lazy-docs :index-reader [index-reader & [db]]
-  {:pre [(ndut/db? db)]}
-  (lazy-docs-index-reader db ndio/str-> index-reader))
-
-(defn index-reader
-  "Returns a BufferedReader of the database index.
-   Use this in a with-open block (or close it explicitly when done)!"
-  ^BufferedReader [db]
-  {:post [(instance? BufferedReader %)]}
-  (when-not (and (:idx-id @db)
-                 (= :nippy (:doc-type @db))
-                 (:version @db)
-                 (:serialized-filename @db))
-    (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
-Consider converting the index (or delete it, which will auto-recreate it)."
-                    (dissoc @db :index))))
-  (let [r (BufferedReader. (FileReader. ^String (:serialized-filename @db)))]
-    (.readLine r) ;; first line isn't part of the index
-    r))
+(defn lazy-docs
+  ([db]
+   (lazy-docs-eager-idx db (lazy-seq (:index @db))))
+  ([a b]
+   {:pre [(every? (some-fn future? (partial instance? BufferedReader)) [a b])]}
+   (let [[db] (filter future? [a b])
+         [reader] (filter (partial instance? BufferedReader) [a b])]
+     (lazy-docs-lazy-idx ndio/str->
+                         (io/file (:filename @db))
+                         reader))))

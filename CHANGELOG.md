@@ -8,6 +8,43 @@ All notable changes to this project will be documented in this file. This change
 - CSV as database files
 - Append documents
 
+## [0.9.0-alpha2] - 2023-03-07
+
+### Changed
+
+`lazy-docs` now works with eager indexes:
+
+``` clojure
+(lazy-docs nd-db)
+```
+
+Or with lazy indexes:
+
+``` clojure
+(with-open [r (nd-db.index/reader nd-db)]
+  (->> nd-db
+       (lazy-docs r)
+       (drop 1000000)
+       (filter (comp pos? :amount))
+       (sort-by :priority)
+       (take 10)))
+```
+
+NB: For convenience this also works, without any penalty:
+
+``` clojure
+(with-open [r (nd-db.index/reader nd-db)]
+  (->> r
+       (lazy-docs nd-db)
+       ...
+       (take 10)))
+```
+
+
+### TODO
+
+Still need to make the conversion function for pre-v0.9.0 `.nddbmeta` files.
+
 ## [0.9.0-alpha1] - 2023-03-07
 
 WIP! `lazy-docs` might change signature when using the new `index-reader`!

@@ -1,8 +1,10 @@
 (ns nd-db.index
   (:require [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [clojure.core.reducers :as r])
-  (:import [java.time Instant]))
+            [clojure.core.reducers :as r]
+            [nd-db.util :as ndut])
+  (:import [java.time Instant]
+           [java.io BufferedReader FileReader]))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -54,3 +56,18 @@
            (fn [acc i]
              (assoc acc (first i) (into [] (rest i))))
            (with-meta {} {:timestamp timestamp}))))))
+
+(defn reader
+  "Returns a BufferedReader of the database index.
+   Use this in a with-open block (or close it explicitly when done)!"
+  ^BufferedReader [db]
+  {:post [(instance? BufferedReader %)]}
+  (when-not (and
+             (ndut/v090+? db)
+             (ndut/nippy-db? db))
+    (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
+Consider converting the index (or delete it, which will auto-recreate it)."
+                    @db)))
+  (let [r (BufferedReader. (FileReader. ^String (:serialized-filename @db)))]
+    (.readLine r) ;; first line isn't part of the index
+    r))

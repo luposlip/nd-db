@@ -33,7 +33,7 @@
                                    (FileWriter. ^String
                                                 (:serialized-filename @db)))]
     ;; writing to EDN string takes ~5x longer than using nippy+b64
-    (write-nippy-ln bwr (dissoc @db :index :id-fn))
+    (write-nippy-ln bwr (dissoc @db :index :id-fn :idx-id :index-persist?))
     (doseq [[id [from len]] (seq (:index @db))]
       (write-nippy-ln bwr [id [from len]])))
   db)
@@ -57,10 +57,9 @@
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
   [{:keys [filename] :as params} serialized-filename]
-  {:post [(ndut/db? %)]}
   (future
     (try
-      (with-open [r (io/reader serialized-filename)]
+      (with-open [r (io/reader ^String serialized-filename)]
         (let [[meta & idx] (line-seq r)]
           (-> meta
               str->
