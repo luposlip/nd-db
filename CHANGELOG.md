@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file. This change
 
 - `lazy-ids` has internal `BufferedReader`. Should be passed from `with-open`.
 - conversion function for pre-v0.9.0 `.nddbmeta` files.
+- skip the realization of the index when generating the db value (= refactor)
 
 ## [0.9.0-alpha2] - 2023-03-08
 
@@ -72,6 +73,18 @@ with millions of huge documents.
 Old indexes will not be readable anymore. Good news is that there will be a new
 `nd-db.convert/upgrade-nddbmeta!` utility function, which can converts your old
 file to the new format, and overwrite it.
+
+The downside to the support for laziness is the size of the meta+index files,
+which in my tested scenarios have grown with 100%. This means a database
+containing ~300k huge documents (of 200-300Kb each in raw JSON/EDN form) has
+grown form ~5MB to ~10MB.
+
+This is not a problem at all in real life, since when you need the realized
+in-memory index (for ad-hoc querying by ID), it still consumes the same amount
+of memory as before (in the above example ~3MB).
+
+And compared to the database it describes it's nothing - the above mentioned
+index is for a `.ndnippy` database of 16.8GB.
 
 ### Other changes
 
