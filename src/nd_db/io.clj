@@ -34,8 +34,10 @@
                                                 (:serialized-filename @db)))]
     ;; writing to EDN string takes ~5x longer than using nippy+b64
     (write-nippy-ln bwr (dissoc @db :index :id-fn :idx-id :index-persist?))
-    (doseq [[id [from len]] (seq (:index @db))]
-      (write-nippy-ln bwr [id [from len]])))
+    (doseq [part (partition-all 1000 (seq (:index @db)))]
+      (doseq [i part]
+        (write-nippy-ln bwr (vec i)))
+      (.flush bwr)))
   db)
 
 (defn- maybe-update-filename [d filename]

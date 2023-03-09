@@ -114,15 +114,15 @@
   [db ids]
   (lazy-seq
    (when (seq ids)
-     (let [doc (q db (ffirst ids))]
-       (cons doc
-             (lazy-docs-eager-idx db (rest ids)))))))
+     (cons (q db (ffirst ids))
+           (lazy-docs-eager-idx db (rest ids))))))
 
 (defn- lazy-docs-lazy-idx [nippy-parser nd-file ^BufferedReader reader]
-  (when-let [line (.readLine reader)]
-    (cons (let [[_ [start len]] (nippy-parser line)]
-            (read-nd-doc nippy-parser nd-file start len))
-          (lazy-docs-lazy-idx nippy-parser nd-file reader))))
+  (lazy-seq
+   (when-let [line (.readLine reader)]
+     (cons (let [[_ [start len]] (nippy-parser line)]
+             (read-nd-doc nippy-parser nd-file start len))
+           (lazy-docs-lazy-idx nippy-parser nd-file reader)))))
 
 (defn lazy-docs
   ([db]
@@ -134,3 +134,18 @@
      (lazy-docs-lazy-idx ndio/str->
                          (io/file (:filename @db))
                          reader))))
+
+(defn- lazy-ids-lazy-idx [nippy-parser ^BufferedReader reader]
+  (lazy-seq
+   (when-let [line (.readLine reader)]
+     (cons (-> line nippy-parser first)
+           (lazy-ids-lazy-idx nippy-parser reader)))))
+
+(defn lazy-ids
+  "Returns a lazy seq of the IDs in the index, ordered the same as the ndnippy
+   based nd-db."
+  [db]
+  (if (ndut/v090+? db)
+    ;; TODO: This should be opened by the caller using with-open
+    (lazy-ids-lazy-idx ndio/str-> (ndix/reader db))
+    (->> @db :index (map first))))

@@ -8,7 +8,19 @@ All notable changes to this project will be documented in this file. This change
 - CSV as database files
 - Append documents
 
-## [0.9.0-alpha2] - 2023-03-07
+## [0.9.0-alpha3] - 2023-03-09
+
+### Enhanced
+
+- Parallelized index-creation - takes 2/3 less time than before (mbp m1)!
+- Potentially more stable serialization of index (flushing every 1000 lines)
+
+### TODO
+
+- `lazy-ids` has internal `BufferedReader`. Should be passed from `with-open`.
+- conversion function for pre-v0.9.0 `.nddbmeta` files.
+
+## [0.9.0-alpha2] - 2023-03-08
 
 ### Changed
 

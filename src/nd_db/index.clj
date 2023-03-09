@@ -14,15 +14,18 @@
     (mapv id-fn (take 10 (line-seq in)))))
 
 (defn idx-reducr [id-fn]
+  ;; TODO: Consider creating the [s l] sub vec immediately
+  ;;       instead of in the last reduce for each batch.
+  ;;       -> potentially better performance (especially because the
+  ;;          last reduce is in the main thread)
   (fn [acc line]
     (let [len (count (.getBytes ^String line))
           id (id-fn line)
           [_ start plen] (or (peek acc) [nil -1 0])]
-      ;; TODO concat into list for parallelization
       (conj acc [id (+ 1 start plen) len]))))
 
 (defn idx-combinr
-  ([] []) ;; TODO: Lazify for parallelization
+  ([] [])
   ([_] [])
   ([acc more]
    (let [[_ prev-start prev-len] (or (peek acc) [nil -1 0])
@@ -44,18 +47,30 @@
    :post [(-> % meta :timestamp inst?)]}
   (with-open [rdr (io/reader filename)]
     (let [timestamp (Instant/now)]
-     (->> rdr
-          line-seq ;; for parallel processing, enable line below!
-          ;;(into [])
-          (r/fold (or (some-> (System/getenv "NDDB_LINES_PER_CORE")
-                              edn/read-string)
-                      512)
-                  idx-combinr
-                  (idx-reducr id-fn))
-          (reduce
-           (fn [acc i]
-             (assoc acc (first i) (into [] (rest i))))
-           (with-meta {} {:timestamp timestamp}))))))
+      ;; without parallelization: 18s
+      ;; with: 6s (partition size 2048, fold size 32
+      ;; that's around 2/3 less processing time
+      (with-meta
+        (->> rdr
+             line-seq ;; for parallel processing, enable line below!
+             (partition-all 2048)
+             (reduce
+              (fn [[offset _ :as acc] part]
+                (let [res (->> part
+                               (into [])
+                               (r/fold 32
+                                       idx-combinr
+                                       (idx-reducr id-fn)))
+                      [s l] (->> res peek rest)]
+                  (-> acc
+                      (update 0 #(+ 1 % s l))
+                      (update 1 merge (reduce
+                                       (fn [a [id s l]]
+                                         (assoc a id [(+ offset s) l]))
+                                       {} res)))))
+              [0 {}])
+             second)
+        {:timestamp timestamp}))))
 
 (defn reader
   "Returns a BufferedReader of the database index.
