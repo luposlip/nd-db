@@ -5,8 +5,14 @@ All notable changes to this project will be documented in this file. This change
 
 ### TODO
 
-- CSV as database files
 - Append documents
+
+## [0.9.0-alpha4] - 2023-03-??
+
+### Added
+
+- Convert compressed `*.ndedn` to ndnippy
+- Alpha support for using CSV files as databases
 
 ## [0.9.0-alpha3] - 2023-03-09
 

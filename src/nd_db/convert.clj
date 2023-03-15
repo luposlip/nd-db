@@ -1,5 +1,8 @@
 (ns nd-db.convert
-  (:require [clojure.java.io :as jio]
+  (:require [clojure
+             [edn :as edn]
+             [string :as s]]
+            [clojure.java.io :as jio]
             [clojure.core.reducers :as r]
             [nd-db
              [core :as nddb]
@@ -7,7 +10,7 @@
              [util :as util]])
   (:import [java.time Instant]))
 
-(defn ->ndnippy
+(defn db->ndnippy
   "Converts .ndjson and .ndedn files to .ndnippy.
 
   .ndnippy is MUCH faster (~10x) and requires less memory to process.
@@ -37,7 +40,7 @@
          (r/fold 50 r/cat r/append!)
          count)))
 
-(defn ->ndnippy-db
+(defn db->ndnippy-db
   "Converts .ndjson and .ndedn files to .ndnippy, and returns the
   corresponding database.
 
@@ -53,20 +56,27 @@
   [in-db {:keys [filename id-path id-fn]}]
   {:pre [(util/db? in-db)
          (string? filename)
-         (or (vector? id-path) (fn? id-fn))]}
+         (or (vector? id-path) (fn? id-fn))]
+   :post [(util/db? %)]}
   (let [id-fn (or id-fn #(get-in % id-path))]
-    {:filename filename
-     :index (into {} (with-open [w (jio/writer filename)]
-                       (reduce
-                        (fn [index id]
-                          (let [doc (nddb/q in-db id)
-                                id (id-fn doc)
-                                last-byte-idx (or (some-> index peek (partial apply +)) 0)
-                                byte-size (ndio/append+newline w)]
-                            (conj index [id [(inc last-byte-idx) byte-size]])))
-                        []
-                        (-> @in-db
-                            :index
-                            keys))))
-     :doc-type :nippy
-     :timestamp (str (Instant/now))}))
+    (future
+      {:filename filename
+       :index (into {} (with-open [w (jio/writer filename)]
+                         (reduce
+                          (fn [index id]
+                            (let [doc (nddb/q in-db id)
+                                  id (id-fn doc)
+                                  last-byte-idx (or (some-> index peek (partial apply +)) 0)
+                                  byte-size (ndio/append+newline w)]
+                              (conj index [id [(inc last-byte-idx) byte-size]])))
+                          []
+                          (-> @in-db
+                              :index
+                              keys))))
+       :doc-type :nippy
+       :timestamp (str (Instant/now))})))
+
+#_
+(defn upgrade-nddbmeta! [db]
+  ()
+  )

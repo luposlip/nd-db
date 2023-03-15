@@ -1,10 +1,12 @@
 (ns nd-db.io
   (:require [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as s]
             [taoensso.nippy :as nippy]
             digest
             [nd-db.util :as ndut])
-  (:import [java.io File Writer BufferedWriter FileWriter]))
+  (:import [java.io File BufferedInputStream Writer FileWriter BufferedWriter]
+           [org.apache.commons.compress.compressors CompressorInputStream CompressorStreamFactory]))
 
 (defn- ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
@@ -76,7 +78,7 @@
           (deref
            (_parse-db params serialized-filename)))))))
 
-(defn serialize-db-filename ^String [{:keys [filename idx-id index-folder]}]
+(defn serialize-db-filename ^String [& {:keys [filename idx-id index-folder]}]
   (let [db-filename (last (s/split filename (re-pattern File/separator)))
         db-md5 (ndfile-md5 filename)]
     (str (or index-folder (System/getProperty "java.io.tmpdir"))
@@ -172,3 +174,10 @@
                       :filename filename
                       :index-persist? (not (false? index-persist?)))
       {:parsed? true})))
+
+(defn mv-file [source target]
+  (shell/sh "mv" source target))
+
+(defn compressed-input-stream ^CompressorInputStream [filename]
+  (let [in ^BufferedInputStream (io/input-stream filename)]
+    (.createCompressorInputStream (CompressorStreamFactory.) in)))

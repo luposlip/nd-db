@@ -23,7 +23,7 @@
             (-> params
                 (dissoc id-fn)
                 (assoc :timestamp (-> index meta :timestamp str)
-                       :version "0.9.0+"
+                       :version "0.9.0"
                        :index index)))))
 
 (defn- persisted-db [params]

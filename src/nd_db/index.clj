@@ -1,8 +1,8 @@
 (ns nd-db.index
   (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]
             [clojure.core.reducers :as r]
-            [nd-db.util :as ndut])
+            [nd-db
+             [util :as ndut]])
   (:import [java.time Instant]
            [java.io BufferedReader FileReader]))
 

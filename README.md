@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.9.0-alpha3"]
+[com.luposlip/nd-db "0.9.0-alpha4"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -160,7 +160,7 @@ simple as getting the IDs:
        (nd-db.core/lazy-docs my-db)
        (drop 100000)
        (take 100)
-       (sort-by :some-value)
+       (sort-by :some-value >)
        first))
 ```
 
@@ -175,7 +175,7 @@ like in this example:
        (drop 100000)
        (take 100)
        (q my-db)
-       (sort-by :some-value)
+       (sort-by :some-value >)
        first))
 ```
 
