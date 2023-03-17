@@ -36,15 +36,17 @@
         parts (s/split filepath ptrn)]
     [(s/join File/separator (butlast parts)) (last parts)]))
 
-(defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder]}]
+(defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder serialized-filename]}]
   (let [db-md5 (ndfile-md5 filename)
-        [folder-path file-path] (path->folder+filename filename)]
+        [folder-path file-path] (path->folder+filename filename)
+        nddbmeta-filename (or serialized-filename
+                              (str (first (s/split file-path #"\."))
+                                   "_" db-md5
+                                   idx-id
+                                   ".nddbmeta"))]
     (str (or index-folder folder-path)
          File/separator
-         (first (s/split file-path #"\."))
-         "_" db-md5
-         idx-id
-         ".nddbmeta")))
+         nddbmeta-filename)))
 
 (defn serialize-db
   "nd-db metadata format v0.9.0+"

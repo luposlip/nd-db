@@ -7,9 +7,15 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents
 
-## [0.9.0-alpha5] - 2023-03-??
+## [0.9.0-alpha6] - 2023-03-??
 
 - Alpha support for using CSV files as databases
+
+## [0.9.0-alpha5] - 2023-03-17
+
+### Fixed
+
+- `lazy-ids` failed in some cases when moving index
 
 ## [0.9.0-alpha4] - 2023-03-17
 
