@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.core.reducers :as r]
             [nd-db
-             [util :as ndut]])
+             [util :as ndut]
+             [io :as ndio]])
   (:import [java.time Instant]
            [java.io BufferedReader FileReader]))
 
@@ -83,6 +84,6 @@
     (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
 Consider converting the index (or delete it, which will auto-recreate it)."
                     @db)))
-  (let [r (BufferedReader. (FileReader. ^String (:serialized-filename @db)))]
+  (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath @db)))]
     (.readLine r) ;; first line isn't part of the index
     r))

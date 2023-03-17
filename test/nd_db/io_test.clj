@@ -2,7 +2,9 @@
   (:require [clojure
              [test :refer :all]
              [string :as s]]
-            [nd-db.io :as sut]))
+            [nd-db
+             [core :as nddb]
+             [io :as sut]]))
 
 (deftest name-type->id+fn
   (testing "Generating map with :id-fn from json name"
@@ -56,13 +58,16 @@
                                              :id-path [:id]})]
       (is (= 123 (id-fn (sut/->str {:id 123})))))))
 
-(deftest serialized-db-filename
-  (let [input-folder "resources/test/"
-        params {:filename (str input-folder "test.ndnippy")}
-        tmpdir (sut/tmpdir)]
-    (is (s/starts-with?
-         (sut/serialized-db-filename params)
-         tmpdir))
-    (is (s/starts-with?
-         (sut/serialized-db-filename (assoc params :index-folder input-folder))
-         input-folder))))
+(deftest serialized-db-filepath
+  (let [input-folder "resources"
+        params {:filename (str input-folder "/test/test.ndnippy")}]
+    (testing "Default is to generate the index in the same folder as the db"
+        (is (s/starts-with?
+             (sut/serialized-db-filepath params)
+             input-folder)))
+    (testing "Generate index in a specific folder"
+        (is (not
+             (s/starts-with?
+              (sut/serialized-db-filepath (assoc params
+                                                 :index-folder input-folder))
+              (str input-folder "/test/")))))))

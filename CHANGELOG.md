@@ -7,12 +7,24 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents
 
-## [0.9.0-alpha4] - 2023-03-??
+## [0.9.0-alpha5] - 2023-03-??
+
+- Alpha support for using CSV files as databases
+
+## [0.9.0-alpha4] - 2023-03-17
+
+### Fixed
+
+- `lazy-ids` now work when moving nddbmeta file around (i.e. with the db file)
+
+### Changed
+
+- Default now is to generate the index in the same folder as the database. Previously the default was the filesystem temp folder.
+- nddbmeta files now only contain the serialized filename, as opposed to before where it was the complete path.
 
 ### Added
 
-- Convert compressed `*.ndedn` to ndnippy
-- Alpha support for using CSV files as databases
+- Reader for compressed non-nippy nd* files
 
 ## [0.9.0-alpha3] - 2023-03-09
 

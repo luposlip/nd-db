@@ -8,11 +8,11 @@
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
-(deftest ->ndnippy
+(deftest db->ndnippy
   (let [db (nddb/db {:filename "resources/test/test.ndjson"
                      :id-fn by-id})
         new-filename "/tmp/test.ndnippy"
-        doc-count (t/->ndnippy db new-filename)]
+        doc-count (t/db->ndnippy db new-filename)]
     (testing "3 documents have been converted"
       (is (= 3 doc-count)))
     (testing "The generated ndnippy database can be used"
@@ -22,11 +22,11 @@
         (is (= doc-count (-> @new-db :index keys count)))
         (is (=  #{1 222 333333} (-> @new-db :index keys set)))))))
 
-(deftest ->ndnippy-db
+(deftest db->ndnippy-db
   (let [db (nddb/db {:filename "resources/test/test.ndjson"
                      :id-fn by-id})
         new-filename "/tmp/test.ndnippy"
-        doc-count (t/->ndnippy db new-filename)]
+        doc-count (t/db->ndnippy db new-filename)]
     (testing "3 documents have been converted"
       (is (= 3 doc-count)))
     (testing "The generated ndnippy database can be used"

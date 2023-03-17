@@ -31,12 +31,28 @@
     (.write (->str data))
     (.newLine)))
 
+(defn path->folder+filename [filepath]
+  (let [ptrn (re-pattern File/separator)
+        parts (s/split filepath ptrn)]
+    [(s/join File/separator (butlast parts)) (last parts)]))
+
+(defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder]}]
+  (let [db-md5 (ndfile-md5 filename)
+        [folder-path file-path] (path->folder+filename filename)]
+    (str (or index-folder folder-path)
+         File/separator
+         (first (s/split file-path #"\."))
+         "_" db-md5
+         idx-id
+         ".nddbmeta")))
+
 (defn serialize-db
   "nd-db metadata format v0.9.0+"
   [db]
-  (with-open [bwr ^BufferedWriter (BufferedWriter.
-                                   (FileWriter. ^String
-                                                (:serialized-filename @db)))]
+  (with-open [bwr ^BufferedWriter
+              (BufferedWriter.
+               (FileWriter. ^String
+                            (serialized-db-filepath @db)))]
     ;; writing to EDN string takes ~5x longer than using nippy+b64
     (write-nippy-ln bwr (dissoc @db :index :id-fn :idx-id :index-persist?))
     (doseq [part (partition-all 1000 (seq (:index @db)))]
@@ -80,16 +96,6 @@
           ;; fallback to pre v0.9.0 metadata standard
           (deref
            (_parse-db params serialized-filename)))))))
-
-(defn serialized-db-filename ^String [& {:keys [filename idx-id index-folder]}]
-  (let [db-filename (last (s/split filename (re-pattern File/separator)))
-        db-md5 (ndfile-md5 filename)]
-    (str (or index-folder (tmpdir))
-         File/separator
-         (first (s/split db-filename #"\."))
-         "_" db-md5
-         idx-id
-         ".nddbmeta")))
 
 (defn append+newline
   "append to a file, super simple lock mechanism"

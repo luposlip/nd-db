@@ -27,13 +27,14 @@
                        :index index)))))
 
 (defn- persisted-db [params]
-  (let [serialized-filename (ndio/serialized-db-filename params)]
-    (if (.isFile ^File (io/file serialized-filename))
-      (ndio/parse-db params serialized-filename)
-      (ndio/serialize-db
-       (raw-db
-        (assoc params
-               :serialized-filename serialized-filename))))))
+  (let [serialized-filepath (ndio/serialized-db-filepath params)]
+    (if (.isFile ^File (io/file serialized-filepath))
+      (ndio/parse-db params serialized-filepath)
+      (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)]
+        (ndio/serialize-db
+         (raw-db
+          (assoc params
+                 :serialized-filename serialized-filename)))))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
