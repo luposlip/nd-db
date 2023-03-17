@@ -22,7 +22,7 @@
   (future (let [index (ndix/create-index filename id-fn)]
             (-> params
                 (dissoc id-fn)
-                (assoc :timestamp (-> index meta :timestamp str)
+                (assoc :as-of (-> index meta :as-of str)
                        :version "0.9.0"
                        :index index)))))
 

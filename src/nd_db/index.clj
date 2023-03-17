@@ -44,7 +44,7 @@
   [filename id-fn]
   {:pre [(string? filename)
          (fn? id-fn)]
-   :post [(-> % meta :timestamp inst?)]}
+   :post [(-> % meta :as-of inst?)]}
   (with-open [rdr (io/reader filename)]
     (let [timestamp (Instant/now)]
       ;; without parallelization: 18s
@@ -70,7 +70,7 @@
                                        {} res)))))
               [0 {}])
              second)
-        {:timestamp timestamp}))))
+        {:as-of timestamp}))))
 
 (defn reader
   "Returns a BufferedReader of the database index.

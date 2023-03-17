@@ -74,7 +74,7 @@
                               :index
                               keys))))
        :doc-type :nippy
-       :timestamp (str (Instant/now))})))
+       :as-of (str (Instant/now))})))
 
 #_
 (defn upgrade-nddbmeta! [db]
