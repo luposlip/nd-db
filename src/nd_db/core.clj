@@ -27,7 +27,7 @@
                        :index index)))))
 
 (defn- persisted-db [params]
-  (let [serialized-filename (ndio/serialize-db-filename params)]
+  (let [serialized-filename (ndio/serialized-db-filename params)]
     (if (.isFile ^File (io/file serialized-filename))
       (ndio/parse-db params serialized-filename)
       (ndio/serialize-db

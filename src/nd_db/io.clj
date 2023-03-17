@@ -8,6 +8,9 @@
   (:import [java.io File BufferedInputStream Writer FileWriter BufferedWriter]
            [org.apache.commons.compress.compressors CompressorInputStream CompressorStreamFactory]))
 
+(defn tmpdir []
+  (System/getProperty "java.io.tmpdir"))
+
 (defn- ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
   [filename]
@@ -78,10 +81,10 @@
           (deref
            (_parse-db params serialized-filename)))))))
 
-(defn serialize-db-filename ^String [& {:keys [filename idx-id index-folder]}]
+(defn serialized-db-filename ^String [& {:keys [filename idx-id index-folder]}]
   (let [db-filename (last (s/split filename (re-pattern File/separator)))
         db-md5 (ndfile-md5 filename)]
-    (str (or index-folder (System/getProperty "java.io.tmpdir"))
+    (str (or index-folder (tmpdir))
          File/separator
          (first (s/split db-filename #"\."))
          "_" db-md5

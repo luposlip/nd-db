@@ -1,6 +1,8 @@
 (ns nd-db.io-test
-  (:require [nd-db.io :as sut]
-            [clojure.test :refer :all]))
+  (:require [clojure
+             [test :refer :all]
+             [string :as s]]
+            [nd-db.io :as sut]))
 
 (deftest name-type->id+fn
   (testing "Generating map with :id-fn from json name"
@@ -53,3 +55,14 @@
     (let [{:keys [id-fn]} (sut/parse-params {:filename "test.ndnippy"
                                              :id-path [:id]})]
       (is (= 123 (id-fn (sut/->str {:id 123})))))))
+
+(deftest serialized-db-filename
+  (let [input-folder "resources/test/"
+        params {:filename (str input-folder "test.ndnippy")}
+        tmpdir (sut/tmpdir)]
+    (is (s/starts-with?
+         (sut/serialized-db-filename params)
+         tmpdir))
+    (is (s/starts-with?
+         (sut/serialized-db-filename (assoc params :index-folder input-folder))
+         input-folder))))

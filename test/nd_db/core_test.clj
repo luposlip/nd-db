@@ -37,7 +37,7 @@
 (deftest db
   (let [params {:id-fn by-id
                 :filename "resources/test/test.ndjson"}]
-    (try (io/delete-file (#'ndio/serialize-db-filename params)) (catch Throwable _ nil))
+    (try (io/delete-file (#'ndio/serialized-db-filename params)) (catch Throwable _ nil))
     (testing "Getting a database the first time (incl. serialization)"
       (is (ndut/db? (sut/db params))))
     (testing "Getting a database the second time (deserialization)"
@@ -112,7 +112,7 @@
         params {:id-fn by-id
                 :filename "resources/test/test.ndjson"
                 :index-folder folder}
-        serialized-filename (#'ndio/serialize-db-filename params)]
+        serialized-filename (#'ndio/serialized-db-filename params)]
     (io/make-parents (str folder "/null"))
     (try (io/delete-file serialized-filename) (catch Throwable _ nil))
     (is (not (.isFile (io/file serialized-filename))))
@@ -126,7 +126,7 @@
   (let [params {:id-fn by-id
                 :filename "resources/test/test.ndjson"
                 :index-persist? false}
-        serialized-filename (#'ndio/serialize-db-filename params)]
+        serialized-filename (#'ndio/serialized-db-filename params)]
     (try (io/delete-file serialized-filename) (catch Throwable _ nil))
     (is (not (.isFile (io/file serialized-filename))))
     (testing "Getting a database the first time (incl. serialization)"
