@@ -11,7 +11,7 @@
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
 
-(defn- ndfile-md5
+(defn ndfile-md5
   "Reads first 10 lines of file, return corresponding MD5"
   [filename]
   (with-open [r (io/reader filename)]
@@ -50,18 +50,21 @@
 
 (defn serialize-db
   "nd-db metadata format v0.9.0+"
-  [db]
-  (with-open [bwr ^BufferedWriter
-              (BufferedWriter.
-               (FileWriter. ^String
-                            (serialized-db-filepath @db)))]
-    ;; writing to EDN string takes ~5x longer than using nippy+b64
-    (write-nippy-ln bwr (dissoc @db :index :id-fn :idx-id :index-persist?))
-    (doseq [part (partition-all 1000 (seq (:index @db)))]
-      (doseq [i part]
-        (write-nippy-ln bwr (vec i)))
-      (.flush bwr)))
-  db)
+  ([db]
+   {:pre [(ndut/db? db)]}
+   (serialize-db @db
+                 (:index @db)
+                 (serialized-db-filepath @db))
+   db)
+  ([db-info index nddbmeta-filepath]
+   {:pre [(map? db-info) (seqable? index) (string? nddbmeta-filepath)]}
+   (with-open [w ^BufferedWriter (io/writer nddbmeta-filepath)]
+     ;; writing to EDN string takes ~5x longer than using nippy+b64
+     (write-nippy-ln w (dissoc db-info :index :id-fn :index-persist?))
+     (doseq [part (partition-all 1000 (seq index))]
+       (doseq [i part]
+         (write-nippy-ln w (vec i)))
+       (.flush ^BufferedWriter w)))))
 
 (defn- maybe-update-filename [d filename]
   (let [{org-filename :filename} d]

@@ -153,7 +153,7 @@
 
   (cond
     (ndut/db? i)
-    (->> @db :index (map first))
+    (->> @i :index (map first))
 
     (= BufferedReader (class i))
     (lazy-ids-lazy-idx ndio/str-> i)

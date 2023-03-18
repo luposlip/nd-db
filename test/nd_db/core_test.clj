@@ -146,7 +146,7 @@
     (is (= 3 (count docs)))))
 
 (deftest lazy-ids
-  (let [db (#'sut/raw-db
+  (let [db (sut/db
             (ndio/parse-params :id-path [:id]
                                :filename "resources/test/test.ndnippy"))]
     (with-open [r (ndix/reader db)]
