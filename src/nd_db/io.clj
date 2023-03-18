@@ -21,8 +21,8 @@
 (defn ->str ^String [data]
   (nippy/freeze-to-string data))
 
-(defn str-> [data-str]
-  (nippy/thaw-from-string ^String data-str))
+(defn str-> [^String data-str]
+  (nippy/thaw-from-string data-str))
 
 (defn- write-nippy-ln
   "Writes data as a base64 encoded line to buffered writer"
@@ -100,7 +100,7 @@
            (_parse-db params serialized-filename)))))))
 
 (defn append+newline
-  "append to a file, super simple lock mechanism"
+  "append to a file, return count of bytes appended"
   [^Writer writer]
   (fn [data]
     (let [data-str (str (->str data) "\n")]
@@ -110,7 +110,8 @@
       (count data-str))))
 
 (defn- name-type->id+fn
-  "Generates valid :id-fn input based on :id-name and :id-type"
+  "Generates valid :id-fn input based on :id-name, :id-type and
+   optionally :source-type"
   [{:keys [id-name id-type source-type]
     :or {id-type :string}}]
   (when (string? id-name)
@@ -131,12 +132,25 @@
                    (re-pattern (format "%s\":%s" id-name source-pattern))
                    %))))}))
 
-(defn- path->id+fn
-  "Generates valid :id-fn input based on :id-path (.ndnippy only!)"
-  [id-path]
-  {:pre [(vector? id-path)]}
-  {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
-   :id-fn #(-> % str-> (get-in id-path))})
+(defmulti ^:private pathy->id+fn
+  "Generates valid :id-fn input based on :id-path or :id keyword.
+   Optionally takes a parser - defaults to parsing ndnippy."
+  (fn [idy & [parser]]
+    (if (vector? idy)
+      :vector
+      :key)))
+
+(defmethod pathy->id+fn :vector
+  [id-path & [parser]]
+  (let [f (or parser str->)]
+    {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
+     :id-fn #(get-in (f %) id-path)}))
+
+(defmethod pathy->id+fn :key
+  [k & [parser]]
+  (let [f (or parser str->)]
+    {:idx-id (if (keyword? k) (name k) (str k))
+     :id-fn #(get (f %) k)}))
 
 (defn- rx-str->id+fn
   "Generates valid :id-fn input based on a regular expression string"
@@ -146,9 +160,11 @@
 
 (defn- infer-doctype [filename]
   (condp = (last (s/split filename #"\."))
-    "ndedn" :edn
-    "ndjson" :json
     "ndnippy" :nippy
+    "ndjson" :json
+    "ndedn" :edn
+    "csv" :csv
+    "tsv" :tsv
     :unknown))
 
 (defn parse-params
@@ -178,7 +194,7 @@
     (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
                                           :idx-id ""}
                                    id-rx-str (rx-str->id+fn id-rx-str)
-                                   id-path (path->id+fn id-path)
+                                   id-path (pathy->id+fn id-path)
                                    :else (name-type->id+fn params))
                              (when index-folder {:index-folder index-folder}))
                       :doc-type doc-type
