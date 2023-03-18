@@ -1,7 +1,9 @@
 (ns nd-db.index-test
   (:require [clojure.edn :as edn]
             [clojure.test :refer :all]
-            [nd-db.index :as sut]))
+            [nd-db
+             [core :as nddb]
+             [index :as sut]]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -27,3 +29,9 @@
               222 [50 22]
               333333 [73 46]}
              (sut/create-index filename id-fn))))))
+
+(deftest reader
+  (let [db (nddb/db :filename "resources/test/test.ndnippy"
+                    :id-path :id)]
+    (with-open [r (sut/reader db)]
+      (is (= 3 (count (line-seq r)))))))

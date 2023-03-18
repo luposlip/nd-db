@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file. This change
 
 ### TODO
 
-- Append documents
+- Append documents (v1.0.0)
 
 ## [0.9.0-alpha6] - 2023-03-??
 

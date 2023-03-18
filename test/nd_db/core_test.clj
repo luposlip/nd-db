@@ -4,7 +4,8 @@
             [nd-db
              [core :as sut]
              [util :as ndut]
-             [io :as ndio]]))
+             [io :as ndio]
+             [index :as ndix]]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -143,3 +144,12 @@
     (is (= clojure.lang.LazySeq (type docs)))
     (is (map? (first docs)))
     (is (= 3 (count docs)))))
+
+(deftest lazy-ids
+  (let [db (#'sut/raw-db
+            (ndio/parse-params :id-path [:id]
+                               :filename "resources/test/test.ndnippy"))]
+    (with-open [r (ndix/reader db)]
+      (let [ids (sut/lazy-ids r)]
+        (is (= clojure.lang.LazySeq (type ids)))
+        (is (= 3 (count ids)))))))

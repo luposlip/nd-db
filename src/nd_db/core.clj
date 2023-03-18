@@ -143,10 +143,19 @@
            (lazy-ids-lazy-idx nippy-parser reader)))))
 
 (defn lazy-ids
-  "Returns a lazy seq of the IDs in the index, ordered the same as the ndnippy
-   based nd-db."
-  [db]
-  (if (ndut/v090+? db)
-    ;; TODO: This should be opened by the caller using with-open
-    (lazy-ids-lazy-idx ndio/str-> (ndix/reader db))
-    (->> @db :index (map first))))
+  "Returns a lazy seq of the IDs in the index.
+   When using index-reader, the order is guaranteed to be the same as the
+   order in the database."
+  [i]
+  (when (and (ndut/db? i)
+             (ndut/v090+? i))
+    (println "For true laziness pass nd-db.index/reader to lazy-ids!"))
+
+  (cond
+    (ndut/db? i)
+    (->> @db :index (map first))
+
+    (= BufferedReader (class i))
+    (lazy-ids-lazy-idx ndio/str-> i)
+
+    :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
