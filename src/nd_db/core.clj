@@ -9,7 +9,7 @@
   (:import [java.io File RandomAccessFile BufferedReader]))
 
 (defn parse-doc [db doc-str]
-  (case (:doc-type @db)
+  (case (:doc-type db)
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
     :nippy (ndio/str-> doc-str)
@@ -19,22 +19,20 @@
   "Creates a database var which can be used to perform queries"
   [& {:keys [id-fn filename] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (future (let [index (ndix/create-index filename id-fn)]
-            (-> params
-                (dissoc id-fn)
-                (assoc :as-of (-> index meta :as-of str)
-                       :version "0.9.0"
-                       :index index)))))
+  (-> params
+      (dissoc id-fn)
+      (assoc :version "0.9.0" ;; TODO version!
+             :index (delay (ndix/create-index filename id-fn)))))
 
 (defn- persisted-db [params]
   (let [serialized-filepath (ndio/serialized-db-filepath params)]
     (if (.isFile ^File (io/file serialized-filepath))
       (ndio/parse-db params serialized-filepath)
       (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)]
-        (ndio/serialize-db
-         (raw-db
-          (assoc params
-                 :serialized-filename serialized-filename)))))))
+        (-> params
+            (assoc :serialized-filename serialized-filename)
+            raw-db
+            ndio/serialize-db)))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -66,18 +64,7 @@
       (persisted-db params)
       (raw-db params))))
 
-(defmulti q
-  "Queries a single or multiple docs from the database by a single or
-  multiple IDs matching those from the `.nd*` database by `id-fn`.
-  -  returns EDN for the matching document."
-  (fn [_ p]
-    (cond (sequential? p)
-          :sequential
-          p
-          :single
-          :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
-
-(defn read-nd-doc
+(defn- read-nd-doc
   "Takes a doc-parser fn, a nd-db file and start and length.
    Return the document."
   [doc-parser ^File db-file start len]
@@ -89,12 +76,23 @@
         (.close))
       (doc-parser (String. bytes)))))
 
+(defmulti q
+  "Queries a single or multiple docs from the database by a single or
+  multiple IDs matching those from the `.nd*` database by `id-fn`.
+  -  returns EDN for the matching document."
+  (fn [_ p]
+    (cond (sequential? p)
+          :sequential
+          p
+          :single
+          :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
+
 (defmethod q :single query-single
   [db id]
   {:pre [(ndut/db? db)
          (not (nil? id))]}
-  (let [[start len] (get (:index @db) id)
-        nd-file (io/file ^String (:filename @db))]
+  (let [[start len] (get @(:index db) id)
+        nd-file (io/file ^String (:filename db))]
     (read-nd-doc (partial parse-doc db) nd-file start len)))
 
 (defmethod q :sequential query-multiple

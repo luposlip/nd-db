@@ -52,9 +52,9 @@
   "nd-db metadata format v0.9.0+"
   ([db]
    {:pre [(ndut/db? db)]}
-   (serialize-db @db
-                 (:index @db)
-                 (serialized-db-filepath @db))
+   (serialize-db db
+                 @(:index db)
+                 (serialized-db-filepath db))
    db)
   ([db-info index nddbmeta-filepath]
    {:pre [(map? db-info) (seqable? index) (string? nddbmeta-filepath)]}
@@ -85,22 +85,23 @@
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
   [{:keys [filename] :as params} serialized-filename]
-  (future
-    (try
-      (with-open [r (io/reader ^String serialized-filename)]
-        (let [[meta & idx] (line-seq r)]
-          (-> meta
-              str->
-              (assoc :index (->> idx
-                                 (map str->)
-                                 (into {})))
-              (maybe-update-filename filename))))
-      (catch Exception e
-        (when (or (-> e ex-message (s/includes? "String.getBytes"))
-                  (s/includes? (ex-message e) "base64"))
-          ;; fallback to pre v0.9.0 metadata standard
-          (deref
-           (_parse-db params serialized-filename)))))))
+  (try
+    (with-open [r (io/reader ^String serialized-filename)]
+      (let [[meta] (line-seq r)]
+        (-> meta
+            str->
+            (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
+                                   (->> (line-seq r2)
+                                        rest
+                                        (map str->)
+                                        (into {})))))
+            (maybe-update-filename filename))))
+    (catch Exception e
+      (when (or (-> e ex-message (s/includes? "String.getBytes"))
+                (s/includes? (ex-message e) "base64"))
+        ;; fallback to pre v0.9.0 metadata standard
+        (deref
+         (_parse-db params serialized-filename))))))
 
 (defn append+newline
   "append to a file, return count of bytes appended"

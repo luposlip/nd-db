@@ -14,15 +14,14 @@
 
 (defn db? [candidate]
   (boolean
-   (and (future? candidate)
-        (contains? @candidate :filename)
-        (contains? @candidate :index))))
+   (and (contains? candidate :filename)
+        (contains? candidate :index))))
 
 (defn v090+? [candidate]
-  (:version @candidate))
+  (:version candidate))
 
 (defn nippy-db? [candidate]
-  (= :nippy (:doc-type @candidate)))
+  (= :nippy (:doc-type candidate)))
 
 (defn number-str?
   "Takes a string, returns true if all chars are numeric.
