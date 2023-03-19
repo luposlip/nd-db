@@ -38,8 +38,11 @@
 
 (defmethod pathy->id+fn :vector
   [id-path parser]
-  {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
-   :id-fn #(get-in (parser %) id-path)})
+  (let [[getr pathy] (if (= 1 (count id-path))
+                       [get (first id-path)]
+                       [get-in id-path])]
+    {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
+     :id-fn #(getr (parser %) pathy)}))
 
 (defmethod pathy->id+fn :key
   [k parser]

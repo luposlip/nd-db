@@ -123,7 +123,7 @@
   ([db]
    {:pre [(ndut/db? db)]}
    (when (:version db)
-     (println "You should use (with-open [r (nd-db.index/reader db)] (lazy-docs db r)) instead!" {:veresion (:version db)})
+     (println "You should use (with-open [r (nd-db.index/reader db)] (lazy-docs db r)) instead!")
      (lazy-docs-eager-idx db (lazy-seq @(:index db)))))
   ([a b]
    {:pre [(every? (some-fn map? (partial instance? BufferedReader)) [a b])]}
