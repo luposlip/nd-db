@@ -127,13 +127,13 @@
 
 (defn lazy-docs
   ([db]
-   (lazy-docs-eager-idx db (lazy-seq (:index @db))))
+   (lazy-docs-eager-idx db (lazy-seq @(:index db))))
   ([a b]
    {:pre [(every? (some-fn future? (partial instance? BufferedReader)) [a b])]}
    (let [[db] (filter future? [a b])
          [reader] (filter (partial instance? BufferedReader) [a b])]
      (lazy-docs-lazy-idx ndio/str->
-                         (io/file (:filename @db))
+                         (io/file (:filename db))
                          reader))))
 
 (defn- lazy-ids-lazy-idx [nippy-parser ^BufferedReader reader]
@@ -153,7 +153,7 @@
 
   (cond
     (ndut/db? i)
-    (->> @i :index (map first))
+    (->> i :index deref (map first))
 
     (= BufferedReader (class i))
     (lazy-ids-lazy-idx ndio/str-> i)

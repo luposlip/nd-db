@@ -83,6 +83,6 @@
     (throw (ex-info "ERROR: pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
 Consider converting the index (or delete it, which will recreate it automatically)."
                     @db)))
-  (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath @db)))]
+  (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath db)))]
     (.readLine r) ;; first line isn't part of the index
     r))

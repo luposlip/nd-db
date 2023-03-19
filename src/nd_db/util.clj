@@ -14,7 +14,8 @@
 
 (defn db? [candidate]
   (boolean
-   (and (contains? candidate :filename)
+   (and (map? candidate)
+        (contains? candidate :filename)
         (contains? candidate :index))))
 
 (defn v090+? [candidate]

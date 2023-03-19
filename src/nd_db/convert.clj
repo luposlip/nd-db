@@ -30,8 +30,9 @@
   [in-db out-filename]
   {:pre [(util/db? in-db)]}
   (with-open [writer (io/writer out-filename)]
-    (->> @in-db
+    (->> in-db
          :index
+         deref
          keys
          (into [])
          (r/map (partial nddb/q in-db))

@@ -60,7 +60,7 @@
    {:pre [(map? db-info) (seqable? index) (string? nddbmeta-filepath)]}
    (with-open [w ^BufferedWriter (io/writer nddbmeta-filepath)]
      ;; writing to EDN string takes ~5x longer than using nippy+b64
-     (write-nippy-ln w (dissoc db-info :index :id-fn :index-persist?))
+     (write-nippy-ln w (dissoc db-info :index :as-of :id-fn :index-persist?))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
          (write-nippy-ln w (vec i)))
