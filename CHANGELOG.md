@@ -7,9 +7,30 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents (v1.0.0)
 
-## [0.9.0-alpha6] - 2023-03-??
+## [0.9.0-alpha7] - 2023-03-??
 
 - Alpha support for using CSV files as databases
+
+## [0.9.0-alpha6] - 2023-03-19
+
+### Added
+
+Utility function `nd-db.convert/upgrade-nddbmeta!` converts your old pre-v0.9.0
+nddbmeta files to the new format, and keeps the old under the same name with
+`_old` appended to the file name.
+
+### Enhanced
+
+Internally the database is now no longer a future. Instead the :index is a
+delay. This means immediate initialization of the db value, and that the
+:index doesn't get realized until you start querying.
+
+This also means that the `lazy-docs` and `lazy-ids` make even better sense
+if you just want to traverse the database sequentially, because in that case
+you're not using the realized index at all.
+
+The external API for the library is unchanged. You initialize the database
+value in the same way, and you query it the same way too.
 
 ## [0.9.0-alpha5] - 2023-03-17
 
