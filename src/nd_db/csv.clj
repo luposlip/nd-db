@@ -9,19 +9,13 @@
 
    optional param :col-parser is a function that can be used to parse
    individual columns."
-  [& {:keys [header separator col-parser drop-n skip-last?]
-      :or {drop-n 0
-           col-parser identity}}]
-  {:pre [(string? header)]}
-  (let [cols (->> header
-                  (#(s/split % (re-pattern (or separator ","))))
-                  (map (comp keyword s/lower-case edn/read-string)))]
+  [& {:keys [cols col-separator col-parser]}]
+  {:pre [(string? col-separator)
+         (ifn? col-parser)
+         (vector? cols)]}
+  (let [ptrn (re-pattern col-separator)]
     (fn [row]
       {:pre [(string? row)]}
       (zipmap cols
-              (->> (s/split row (re-pattern (or separator ",")))
-                   (drop drop-n)
-                   (#(if skip-last?
-                       (butlast %)
-                       %))
+              (->> (s/split row ptrn)
                    (map col-parser))))))

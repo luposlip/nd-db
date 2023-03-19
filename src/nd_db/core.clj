@@ -5,15 +5,19 @@
             [nd-db
              [io :as ndio]
              [index :as ndix]
-             [util :as ndut]])
+             [util :as ndut]
+             [csv :as csv]])
   (:import [java.io File RandomAccessFile BufferedReader]))
 
+;; TODO: The specific parse-doc fn should be put into the db
+;;       upon initialization, but not be serialized.
+;;       This would speed up processing.
 (defn parse-doc [db doc-str]
   (case (:doc-type db)
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
     :nippy (ndio/str-> doc-str)
-    :csv (str "parse-doc: " doc-str)
+    :csv ((csv/csv-row->data db) doc-str)
     :else (throw (ex-info "Unknown doc-type" {:doc-type @db}))))
 
 (defn- raw-db

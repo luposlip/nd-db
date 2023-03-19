@@ -62,7 +62,10 @@
    {:pre [(map? db-info) (seqable? index) (string? nddbmeta-filepath)]}
    (with-open [w ^BufferedWriter (io/writer nddbmeta-filepath)]
      ;; writing to EDN string takes ~5x longer than using nippy+b64
-     (write-nippy-ln w (dissoc db-info :index :as-of :id-fn :index-persist?))
+     (write-nippy-ln w (dissoc db-info
+                               :index :as-of
+                               :id-fn :col-parser
+                               :index-persist?))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
          (write-nippy-ln w (vec i)))
@@ -151,14 +154,15 @@
     (when (and id-name id-type (not= :json doc-type))
       (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
 
-    (with-meta (cond-> (merge (cond id-fn {:id-fn id-fn
-                                           :idx-id ""}
-                                    id-rx-str (ndid/rx-str->id+fn id-rx-str)
-                                    (and col-separator id-path)
-                                    (ndid/csv-id+fn params)
-                                    id-path (ndid/pathy->id+fn id-path str->)
-                                    :else (ndid/name-type->id+fn params))
-                              (when index-folder {:index-folder index-folder}))
+    (with-meta (cond-> (cond id-fn {:id-fn id-fn
+                                    :idx-id ""}
+                             id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                             (and col-separator id-path)
+                             (ndid/csv-id+fn params)
+                             id-path (ndid/pathy->id+fn id-path str->)
+                             :else (ndid/name-type->id+fn params))
+                 true (merge
+                       (when index-folder {:index-folder index-folder}))
                  true (assoc
                        :doc-type doc-type
                        :filename filename

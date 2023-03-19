@@ -71,7 +71,8 @@
     (if (number? id-col-idx)
       {:id-fn (fn [row-str]
                 (col-parser (nth (s/split row-str ptrn) id-col-idx)))
-       :idx-id (name id-path)}
+       :idx-id (name id-path)
+       :col-parser col-parser}
       (throw (ex-info "Can't find ID column in colums row string" {:id-path id-path
                                                                    :col-separator col-separator
                                                                    :col-str col-str})))))
