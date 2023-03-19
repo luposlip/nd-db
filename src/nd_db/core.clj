@@ -18,17 +18,25 @@
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [& {:keys [id-fn filename doc-type] :as params}]
-  {:pre [(-> params meta :parsed?)]}
+  [& {:keys [id-fn filename doc-type col-separator id-path] :as params}]
+  {:pre [(-> params meta :parsed?)
+         (string? col-separator)
+         (keyword? id-path)]}
   (let [index (delay (ndix/create-index
                       filename id-fn
                       (when (= :csv doc-type)
                         :skip-first!)))]
-    (-> params
-        (dissoc id-fn)
-        (assoc :version "0.9.0" ;; TODO version!
-               :index index
-               :as-of (delay (-> @index meta :as-of))))))
+    (cond-> params
+      true (dissoc :id-fn)
+      true (assoc :version "0.9.0" ;; TODO version!
+                  :index index
+                  :as-of (delay (-> @index meta :as-of)))
+      (= :csv (:doc-type params))
+      (assoc :cols (with-open [r (io/reader filename)]
+                     (ndut/col-str->key-vec
+                      (re-pattern col-separator)
+                      (first (line-seq r))))
+             :id-path id-path))))
 
 (defn- persisted-db [params]
   (let [serialized-filepath (ndio/serialized-db-filepath params)]

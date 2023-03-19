@@ -130,7 +130,7 @@
              id-fn id-rx-str
              id-path
              id-name id-type
-             col-separator col-parser cols ;; CSV
+             col-separator col-parser ;; CSV
              index-folder index-persist?] :as params}]
   {:pre [(string? filename)
          (or (fn? id-fn)
@@ -151,17 +151,21 @@
     (when (and id-name id-type (not= :json doc-type))
       (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
 
-    (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
-                                          :idx-id ""}
-                                   id-rx-str (ndid/rx-str->id+fn id-rx-str)
-                                   (and col-separator id-path)
-                                   (ndid/csv-id+fn params)
-                                   id-path (ndid/pathy->id+fn id-path str->)
-                                   :else (ndid/name-type->id+fn params))
-                             (when index-folder {:index-folder index-folder}))
-                      :doc-type doc-type
-                      :filename filename
-                      :index-persist? (not (false? index-persist?)))
+    (with-meta (cond-> (merge (cond id-fn {:id-fn id-fn
+                                           :idx-id ""}
+                                    id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                                    (and col-separator id-path)
+                                    (ndid/csv-id+fn params)
+                                    id-path (ndid/pathy->id+fn id-path str->)
+                                    :else (ndid/name-type->id+fn params))
+                              (when index-folder {:index-folder index-folder}))
+                 true (assoc
+                       :doc-type doc-type
+                       :filename filename
+                       :index-persist? (not (false? index-persist?)))
+                 (= :csv doc-type)
+                 (assoc :col-separator col-separator
+                        :id-path id-path))
       {:parsed? true})))
 
 (defn mv-file [source target]
