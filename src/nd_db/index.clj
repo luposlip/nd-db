@@ -85,9 +85,6 @@
     (throw (ex-info "Pre v0.9.0 .nddbmeta format - cannot lazily traverse index.
 Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it, which will recreate it automatically)."
                     db)))
-  (when-not (ndut/nippy-db? db)
-            (throw (ex-info "Currently only ndnippy databases are support for lazy-docs"
-                            db)))
   (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath db)))]
     (.readLine r) ;; first line isn't part of the index
     r))
