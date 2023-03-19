@@ -9,13 +9,12 @@
 
    optional param :col-parser is a function that can be used to parse
    individual columns."
-  [& {:keys [cols col-separator col-parser]}]
+  ;; TODO: back to returning af fn, that closes over the initial data!
+  [{:keys [cols col-separator col-parser]} row-str]
   {:pre [(string? col-separator)
          (ifn? col-parser)
-         (vector? cols)]}
-  (let [ptrn (re-pattern col-separator)]
-    (fn [row]
-      {:pre [(string? row)]}
-      (zipmap cols
-              (->> (s/split row ptrn)
-                   (map col-parser))))))
+         (vector? cols)
+         (string? row-str)]}
+  (zipmap cols
+          (->> (s/split row-str (re-pattern col-separator))
+               (map col-parser))))

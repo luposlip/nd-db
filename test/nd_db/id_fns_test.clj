@@ -83,15 +83,15 @@
 (deftest csv-id+fn
   (let [rows ["1,2,a" "3,b,4" "c,5,6"]]
     (testing "Test generation of basic id-fn for CSV files"
-      (is (= [2 "b" 5] (map (sut/csv-id+fn {:filename "resources/test/test.csv"
-                                            :col-separator ","
-                                            :id-path :b})
+      (is (= [2 "b" 5] (map (:id-fn (sut/csv-id+fn {:filename "resources/test/test.csv"
+                                                    :col-separator ","
+                                                    :id-path :b}))
                             rows))))
     (testing "Test id-fn for CSV files, with custom column parser"
-      (is (= [2 4 99] (map (sut/csv-id+fn :filename "resources/test/test.csv"
-                                          :col-separator ","
-                                          :id-path :a
-                                          :col-parser (fn [i] (if (ndut/number-str? i)
-                                                                (inc (edn/read-string i))
-                                                                (int (first i)))))
+      (is (= [2 4 99] (map (:id-fn (sut/csv-id+fn :filename "resources/test/test.csv"
+                                                  :col-separator ","
+                                                  :id-path :a
+                                                  :col-parser (fn [i] (if (ndut/number-str? i)
+                                                                        (inc (edn/read-string i))
+                                                                        (int (first i))))))
                            rows))))))

@@ -52,8 +52,8 @@
     ;; that's around 2/3 less processing time
     (let [[fline & rlines] (line-seq rdr)
           [lines init-offset] (if skip-first?
-                    [rlines (inc (count (.getBytes ^String fline)))]
-                    [rlines 0])]
+                                [rlines (inc (count (.getBytes ^String fline)))]
+                                [(cons fline rlines) 0])]
       (with-meta
         (->> lines
              (partition-all 2048)
