@@ -4,8 +4,10 @@
             [clojure.string :as s]
             [taoensso.nippy :as nippy]
             digest
-            [nd-db.util :as ndut])
-  (:import [java.io File BufferedInputStream Writer FileWriter BufferedWriter]
+            [nd-db
+             [util :as ndut]
+             [id-fns :as ndid]])
+  (:import [java.io File BufferedInputStream Writer BufferedWriter]
            [org.apache.commons.compress.compressors CompressorInputStream CompressorStreamFactory]))
 
 (defn tmpdir []
@@ -113,55 +115,6 @@
         (.flush))
       (count data-str))))
 
-(defn- name-type->id+fn
-  "Generates valid :id-fn input based on :id-name, :id-type and
-   optionally :source-type"
-  [{:keys [id-name id-type source-type]
-    :or {id-type :string}}]
-  (when (string? id-name)
-    {:idx-id (str id-name (name id-type))
-     :id-fn (let [source-type (or source-type id-type)
-                  source-pattern (condp = source-type
-                                   :integer "(\\d+)"
-                                   "\"(\\w+)\"")]
-              (condp = id-type
-                :integer #(BigInteger.
-                           ^String
-                           (second
-                            (re-find
-                             (re-pattern (format "%s\":%s" id-name source-pattern))
-                             %)))
-                #(second
-                  (re-find
-                   (re-pattern (format "%s\":%s" id-name source-pattern))
-                   %))))}))
-
-(defmulti ^:private pathy->id+fn
-  "Generates valid :id-fn input based on :id-path or :id keyword.
-   Optionally takes a parser - defaults to parsing ndnippy."
-  (fn [idy & [parser]]
-    (if (vector? idy)
-      :vector
-      :key)))
-
-(defmethod pathy->id+fn :vector
-  [id-path & [parser]]
-  (let [f (or parser str->)]
-    {:idx-id (s/join (map #(if (keyword? %) (name %) %) id-path))
-     :id-fn #(get-in (f %) id-path)}))
-
-(defmethod pathy->id+fn :key
-  [k & [parser]]
-  (let [f (or parser str->)]
-    {:idx-id (if (keyword? k) (name k) (str k))
-     :id-fn #(get (f %) k)}))
-
-(defn- rx-str->id+fn
-  "Generates valid :id-fn input based on a regular expression string"
-  [rx-str]
-  {:idx-id (ndut/str->hash rx-str)
-   :id-fn #(Integer. ^String (second (re-find (re-pattern rx-str) %)))})
-
 (defn- infer-doctype [filename]
   (condp = (last (s/split filename #"\."))
     "ndnippy" :nippy
@@ -197,9 +150,9 @@
 
     (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
                                           :idx-id ""}
-                                   id-rx-str (rx-str->id+fn id-rx-str)
-                                   id-path (pathy->id+fn id-path)
-                                   :else (name-type->id+fn params))
+                                   id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                                   id-path (ndid/pathy->id+fn id-path str->)
+                                   :else (ndid/name-type->id+fn params))
                              (when index-folder {:index-folder index-folder}))
                       :doc-type doc-type
                       :filename filename
