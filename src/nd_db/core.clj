@@ -141,10 +141,13 @@
 
 (defn lazy-docs
   ([db]
-   (lazy-docs-eager-idx db (lazy-seq @(:index db))))
+   {:pre [(ndut/db? db)]}
+   (if (:version db)
+     (throw (ex-info "You should use (with-open [r (nd-db.index/reader db)] (lazy-docs db r)) instead!" {:veresion (:version db)}))
+     (lazy-docs-eager-idx db (lazy-seq @(:index db)))))
   ([a b]
-   {:pre [(every? (some-fn future? (partial instance? BufferedReader)) [a b])]}
-   (let [[db] (filter future? [a b])
+   {:pre [(every? (some-fn map? (partial instance? BufferedReader)) [a b])]}
+   (let [[db] (filter map? [a b])
          [reader] (filter (partial instance? BufferedReader) [a b])]
      (lazy-docs-lazy-idx ndio/str->
                          (io/file (:filename db))
