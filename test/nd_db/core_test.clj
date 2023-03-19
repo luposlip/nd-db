@@ -137,7 +137,7 @@
 
 (deftest lazy-docs
   (let [db (#'sut/raw-db
-            (ndio/parse-params :id-path [:id]
+            (ndio/parse-params :id-path :id
                                :filename "resources/test/test.ndnippy"))
         docs (sut/lazy-docs db)]
 
@@ -147,7 +147,7 @@
 
 (deftest lazy-ids
   (let [db (sut/db
-            (ndio/parse-params :id-path [:id]
+            (ndio/parse-params :id-path :id
                                :filename "resources/test/test.ndnippy"))]
     (with-open [r (ndix/reader db)]
       (let [ids (sut/lazy-ids r)]

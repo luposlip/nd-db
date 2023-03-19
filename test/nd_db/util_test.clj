@@ -1,15 +1,10 @@
 (ns nd-db.util-test
-  (:require [nd-db.util :as t]
+  (:require [nd-db.util :as sut]
             [clojure.test :refer :all]))
 
 (deftest db?
   (testing "Somewhat valid check with db?"
-    (is (t/db? (future {:index {}
-                        :filename ""}))))
+    (is (sut/db? {:index {}
+                :filename ""})))
   (testing "Unreal test with db?"
-    (is (not (t/db? (future {}))))))
-
-(deftest rx-str->id+fn
-  ;; TODO Implement!
-  ;; also name-type-> and path->
-  (is true))
+    (is (not (sut/db? {})))))
