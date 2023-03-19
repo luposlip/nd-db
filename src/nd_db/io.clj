@@ -144,7 +144,8 @@
                 (:idx-id %)
                 (:doc-type %))]}
   (let [doc-type (infer-doctype filename)]
-    (when (and id-path (not= :nippy doc-type))
+    (when (and id-path (and (not col-separator)
+                            (not= :nippy doc-type)))
       (throw (ex-info "For performance reasons :id-path param is only allowed for .ndnippy files - recommended instead is explicity :id-fn with a regex (or :id-name and :id-type combo)" params)))
 
     (when (and id-name id-type (not= :json doc-type))

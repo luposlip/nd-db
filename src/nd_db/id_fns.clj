@@ -68,5 +68,10 @@
                   (-> r line-seq first))
         cols (ndut/col-str->key-vec ptrn col-str)
         id-col-idx (ndut/index-of id-path cols)]
-    (fn [row-str]
-      (col-parser (nth (s/split row-str ptrn) id-col-idx)))))
+    (if (number? id-col-idx)
+      {:id-fn (fn [row-str]
+                (col-parser (nth (s/split row-str ptrn) id-col-idx)))
+       :idx-id (name id-path)}
+      (throw (ex-info "Can't find ID column in colums row string" {:id-path id-path
+                                                                   :col-separator col-separator
+                                                                   :col-str col-str})))))

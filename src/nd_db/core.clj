@@ -13,13 +13,17 @@
     :json (json/parse-string doc-str true)
     :edn (edn/read-string doc-str)
     :nippy (ndio/str-> doc-str)
+    :csv (str "parse-doc: " doc-str)
     :else (throw (ex-info "Unknown doc-type" {:doc-type @db}))))
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [& {:keys [id-fn filename] :as params}]
+  [& {:keys [id-fn filename doc-type] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (let [index (delay (ndix/create-index filename id-fn))]
+  (let [index (delay (ndix/create-index
+                      filename id-fn
+                      (when (= :csv doc-type)
+                        :skip-first!)))]
     (-> params
         (dissoc id-fn)
         (assoc :version "0.9.0" ;; TODO version!
