@@ -7,9 +7,15 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents (v1.0.0)
 
-## [0.9.0-alpha7] - 2023-03-??
+## [0.9.0-beta1] - 2023-03-19
+
+### Added
 
 - Support for CSV/TSV files as databases
+
+### TODO
+
+- Revamp documentation
 
 ## [0.9.0-alpha6] - 2023-03-19
 
