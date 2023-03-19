@@ -78,9 +78,10 @@
   "Parse nd-db metadata format pre v0.9.0"
   [{:keys [filename]} serialized-filename]
   {:post [(ndut/db? %)]}
-  (future (-> serialized-filename
-              nippy/thaw-from-file
-              (maybe-update-filename filename))))
+  (-> serialized-filename
+      nippy/thaw-from-file
+      (maybe-update-filename filename)
+      (assoc :serialized-filename serialized-filename)))
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
@@ -100,8 +101,7 @@
       (when (or (-> e ex-message (s/includes? "String.getBytes"))
                 (s/includes? (ex-message e) "base64"))
         ;; fallback to pre v0.9.0 metadata standard
-        (deref
-         (_parse-db params serialized-filename))))))
+        (_parse-db params serialized-filename)))))
 
 (defn append+newline
   "append to a file, return count of bytes appended"
