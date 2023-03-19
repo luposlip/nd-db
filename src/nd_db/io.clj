@@ -125,18 +125,20 @@
     :unknown))
 
 (defn parse-params
-  "Parses input params for intake of raw-db"
+  "Parses input params for intake by raw-db"
   [& {:keys [filename
              id-fn id-rx-str
              id-path
              id-name id-type
+             col-separator col-parser cols ;; CSV
              index-folder index-persist?] :as params}]
-  {:pre [(or (fn? id-fn)
+  {:pre [(string? filename)
+         (or (fn? id-fn)
              (string? id-rx-str)
-             (vector? id-path)
+             id-path ;; vector or single val
              (and id-name id-type)
-             (or (nil? filename)
-                 (string? filename)))]
+             (and (string? col-separator) (keyword? id-path))
+             ((some-fn nil? ifn?) col-parser))]
    :post [#(and (:filename %)
                 (:id-fn %)
                 (:idx-id %)
@@ -151,6 +153,8 @@
     (with-meta (assoc (merge (cond id-fn {:id-fn id-fn
                                           :idx-id ""}
                                    id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                                   (and col-separator id-path)
+                                   (ndid/csv-id+fn params)
                                    id-path (ndid/pathy->id+fn id-path str->)
                                    :else (ndid/name-type->id+fn params))
                              (when index-folder {:index-folder index-folder}))

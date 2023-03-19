@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file. This change
 
 ## [0.9.0-alpha7] - 2023-03-??
 
-- Alpha support for using CSV files as databases
+- Support for CSV/TSV files as databases
 
 ## [0.9.0-alpha6] - 2023-03-19
 

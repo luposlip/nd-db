@@ -1,5 +1,8 @@
 (ns nd-db.id-fns
-  (:require [clojure.string :as s]
+  (:require [clojure
+             [edn :as edn]
+             [string :as s]]
+            [clojure.java.io :as io]
             [nd-db.util :as ndut]))
 
 (defn name-type->id+fn
@@ -49,3 +52,21 @@
   [rx-str]
   {:idx-id (ndut/str->hash rx-str)
    :id-fn #(Integer. ^String (second (re-find (re-pattern rx-str) %)))})
+
+(defn- default-col-parser [col-str]
+  (if (ndut/number-str? col-str)
+    (edn/read-string col-str)
+    col-str))
+
+(defn csv-id+fn [& {:keys [filename col-separator id-path col-parser]
+                    :or {col-parser default-col-parser}}]
+  {:pre [(string? filename)
+         (string? col-separator)
+         (keyword? id-path)]}
+  (let [ptrn (re-pattern col-separator)
+        col-str (with-open [r (io/reader filename)]
+                  (-> r line-seq first))
+        cols (ndut/col-str->key-vec ptrn col-str)
+        id-col-idx (ndut/index-of id-path cols)]
+    (fn [row-str]
+      (col-parser (nth (s/split row-str ptrn) id-col-idx)))))

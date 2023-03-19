@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [nd-db
              [io :as ndio]
+             [util :as ndut]
              [id-fns :as sut]]))
 
 (deftest name-type->id+fn-1
@@ -78,3 +79,19 @@
       (is (= 1 ((:id-fn res2) edn-str)))
       (is (= 2 ((:id-fn res3) nippy-str)))
       (is (= 2 ((:id-fn res4) edn-str))))))
+
+(deftest csv-id+fn
+  (let [rows ["1,2,a" "3,b,4" "c,5,6"]]
+    (testing "Test generation of basic id-fn for CSV files"
+      (is (= [2 "b" 5] (map (sut/csv-id+fn {:filename "resources/test/test.csv"
+                                            :col-separator ","
+                                            :id-path :b})
+                            rows))))
+    (testing "Test id-fn for CSV files, with custom column parser"
+      (is (= [2 4 99] (map (sut/csv-id+fn :filename "resources/test/test.csv"
+                                          :col-separator ","
+                                          :id-path :a
+                                          :col-parser (fn [i] (if (ndut/number-str? i)
+                                                                (inc (edn/read-string i))
+                                                                (int (first i)))))
+                           rows))))))
