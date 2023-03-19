@@ -94,19 +94,20 @@
    Keeps old file by adding \"_old\" to filename.
    Returns nil if file doesn't exist.
    Logs if already upgraded."
-  [nddbmeta-filepath & [nddb-filepath]]
-  (when (.isFile (io/file nddbmeta-filepath))
-    (let [{:keys [version idx-id] :as db-info}
-          (try (nippy/thaw-from-file nddbmeta-filepath)
-               (catch Exception _ (println "Already upgraded")))
-          idx-id (or idx-id (try (paths->idx-id nddb-filepath nddbmeta-filepath)
-                                 (catch AssertionError _
-                                   (throw (Exception. ":idx-id not contained in old metadata, need additional db filepath parameter")))))]
-      (when-not version
-        (ndio/mv-file nddbmeta-filepath (str nddbmeta-filepath "_old"))
-        (ndio/serialize-db (assoc db-info
-                                  :version "0.9.0" ;; TODO version!
-                                  :idx-id idx-id)
-                           (:index db-info)
-                           nddbmeta-filepath)
-        :upgraded))))
+  [{:keys [filename serialized-filename]}]
+  (when (.isFile (io/file serialized-filename))
+    (try
+      (let [{:keys [version idx-id timestamp] :as db-info}
+            (nippy/thaw-from-file serialized-filename)
+            idx-id (or idx-id (paths->idx-id filename serialized-filename))]
+        (when-not version
+          (ndio/mv-file serialized-filename (str serialized-filename "_old"))
+          (ndio/serialize-db (-> (dissoc db-info :timestamp)
+                                 (assoc :version "0.9.0" ;; TODO version!
+                                        :idx-id idx-id
+                                        :as-of timestamp))
+                             (:index db-info)
+                             serialized-filename)
+          :upgraded))
+      (catch Exception _
+        :already-upgraded))))
