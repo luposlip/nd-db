@@ -1,44 +1,24 @@
 (ns nd-db.core
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [cheshire.core :as json]
+  (:require [clojure.java.io :as io]
             [nd-db
              [io :as ndio]
              [index :as ndix]
-             [util :as ndut]
-             [csv :as csv]])
+             [util :as ndut]])
   (:import [java.io File RandomAccessFile BufferedReader]))
-
-;; TODO: The specific parse-doc fn should be put into the db
-;;       upon initialization, but not be serialized.
-;;       This would speed up processing.
-(defn parse-doc [db doc-str]
-  (case (:doc-type db)
-    :json (json/parse-string doc-str true)
-    :edn (edn/read-string doc-str)
-    :nippy (ndio/str-> doc-str)
-    :csv (csv/csv-row->data db doc-str)
-    :else (throw (ex-info "Unknown doc-type" {:doc-type @db}))))
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [& {:keys [id-fn filename doc-type col-separator id-path] :as params}]
+  [& {:keys [id-fn filename doc-type] :as params}]
   {:pre [(-> params meta :parsed?)]}
   (let [index (delay (ndix/create-index
                       filename id-fn
                       (when (= :csv doc-type)
                         :skip-first!)))]
-    (cond-> params
-      true (dissoc :id-fn)
-      true (assoc :version "0.9.0" ;; TODO version!
-                  :index index
-                  :as-of (delay (-> @index meta :as-of)))
-      (= :csv (:doc-type params))
-      (assoc :cols (with-open [r (io/reader filename)]
-                     (ndut/col-str->key-vec
-                      (re-pattern col-separator)
-                      (first (line-seq r))))
-             :id-path id-path))))
+    (-> params
+        (dissoc :id-fn)
+        (assoc :version "0.9.0" ;; TODO version!
+               :index index
+               :as-of (delay (-> @index meta :as-of))))))
 
 (defn- persisted-db [params]
   (let [serialized-filepath (ndio/serialized-db-filepath params)]
@@ -109,7 +89,7 @@
          (not (nil? id))]}
   (let [[start len] (get @(:index db) id)
         nd-file (io/file ^String (:filename db))]
-    (read-nd-doc (partial parse-doc db) nd-file start len)))
+    (read-nd-doc (:doc-parser db) nd-file start len)))
 
 (defmethod q :sequential query-multiple
   [db ids]

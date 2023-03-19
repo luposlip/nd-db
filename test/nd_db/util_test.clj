@@ -5,7 +5,7 @@
 (deftest db?
   (testing "Somewhat valid check with db?"
     (is (sut/db? {:index {}
-                :filename ""})))
+                  :doc-parser identity})))
   (testing "Unreal test with db?"
     (is (not (sut/db? {})))))
 

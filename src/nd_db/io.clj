@@ -1,12 +1,17 @@
 (ns nd-db.io
-  (:require [clojure.java.io :as io]
+  (:require [clojure
+             [string :as s]
+             [edn :as edn]]
+            [clojure.java.io :as io]
             [clojure.java.shell :as shell]
-            [clojure.string :as s]
+            [cheshire.core :as json]
             [taoensso.nippy :as nippy]
             digest
             [nd-db
              [util :as ndut]
-             [id-fns :as ndid]])
+             [io :as ndio]
+             [id-fns :as ndid]
+             [csv :as csv]])
   (:import [java.io File BufferedInputStream Writer BufferedWriter]
            [org.apache.commons.compress.compressors CompressorInputStream CompressorStreamFactory]))
 
@@ -64,7 +69,7 @@
      ;; writing to EDN string takes ~5x longer than using nippy+b64
      (write-nippy-ln w (dissoc db-info
                                :index :as-of
-                               :id-fn :col-parser
+                               :id-fn :col-parser :doc-parser
                                :index-persist?))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
@@ -79,7 +84,15 @@
           (assoc :filename filename))
       d)))
 
-(defn- _parse-db
+(defn params->doc-parser [{:keys [doc-type] :as params}]
+  (case doc-type
+    :json #(json/parse-string % true)
+    :edn edn/read-string
+    :nippy ndio/str->
+    :csv (csv/csv-row->data params)
+    :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+
+(defn- ^{:deprecated "v0.9.0"} _parse-db
   "Parse nd-db metadata format pre v0.9.0"
   [{:keys [filename]} serialized-filename]
   {:post [(ndut/db? %)]}
@@ -100,7 +113,8 @@
                                    (->> (line-seq r2)
                                         rest
                                         (map str->)
-                                        (into {})))))
+                                        (into {}))))
+                   :doc-parser (params->doc-parser params))
             (maybe-update-filename filename))))
     (catch Exception e
       (when (or (-> e ex-message (s/includes? "String.getBytes"))
@@ -145,7 +159,8 @@
    :post [#(and (:filename %)
                 (:id-fn %)
                 (:idx-id %)
-                (:doc-type %))]}
+                (:doc-type %)
+                (:doc-parser %))]}
   (let [doc-type (infer-doctype filename)]
     (when (and id-path (and (not col-separator)
                             (not= :nippy doc-type)))
@@ -154,23 +169,27 @@
     (when (and id-name id-type (not= :json doc-type))
       (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
 
-    (with-meta (cond-> (cond id-fn {:id-fn id-fn
-                                    :idx-id ""}
-                             id-rx-str (ndid/rx-str->id+fn id-rx-str)
-                             (and col-separator id-path)
-                             (ndid/csv-id+fn params)
-                             id-path (ndid/pathy->id+fn id-path str->)
-                             :else (ndid/name-type->id+fn params))
-                 true (merge
-                       (when index-folder {:index-folder index-folder}))
-                 true (assoc
-                       :doc-type doc-type
-                       :filename filename
-                       :index-persist? (not (false? index-persist?)))
-                 (= :csv doc-type)
-                 (assoc :col-separator col-separator
-                        :id-path id-path))
-      {:parsed? true})))
+    (let [parsed (cond-> (cond id-fn {:id-fn id-fn
+                                      :idx-id ""}
+                               id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                               (and col-separator id-path)
+                               (ndid/csv-id+fn params)
+                               id-path (ndid/pathy->id+fn id-path str->)
+                               :else (ndid/name-type->id+fn params))
+                   true (merge
+                         (when index-folder {:index-folder index-folder}))
+                   true (assoc
+                         :doc-type doc-type
+                         :filename filename
+                         :index-persist? (not (false? index-persist?)))
+                   (= :csv doc-type)
+                   (assoc :col-separator col-separator
+                          :id-path id-path
+                          :cols (with-open [r (io/reader filename)]
+                                  (ndut/col-str->key-vec
+                                   (re-pattern col-separator)
+                                   (first (line-seq r))))))]
+      (with-meta (assoc parsed :doc-parser (params->doc-parser parsed)) {:parsed? true}))))
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))
