@@ -57,23 +57,25 @@
          (string? filename)
          (or (vector? id-path) (fn? id-fn))]
    :post [(util/db? %)]}
-  (let [id-fn (or id-fn #(get-in % id-path))]
-    (future
-      {:filename filename
-       :index (into {} (with-open [w (io/writer filename)]
-                         (reduce
-                          (fn [index id]
-                            (let [doc (nddb/q in-db id)
-                                  id (id-fn doc)
-                                  last-byte-idx (or (some-> index peek (partial apply +)) 0)
-                                  byte-size (ndio/append+newline w)]
-                              (conj index [id [(inc last-byte-idx) byte-size]])))
-                          []
-                          (-> @in-db
-                              :index
-                              keys))))
-       :doc-type :nippy
-       :as-of (str (Instant/now))})))
+  (let [id-fn (or id-fn #(get-in % id-path))
+        index (delay (with-meta
+                       (into {} (with-open [w (io/writer filename)]
+                                  (reduce
+                                   (fn [index id]
+                                     (let [doc (nddb/q in-db id)
+                                           id (id-fn doc)
+                                           last-byte-idx (or (some-> index peek (partial apply +)) 0)
+                                           byte-size (ndio/append+newline w)]
+                                       (conj index [id [(inc last-byte-idx) byte-size]])))
+                                   []
+                                   (-> @in-db
+                                       :index
+                                       keys))))
+                       {:as-of (Instant/now)}))]
+    {:filename filename
+     :index index
+     :doc-type :nippy
+     :as-of (delay (-> @index meta :as-of))}))
 
 (defn paths->idx-id [db-filepath ndmeta-filepath]
   {:pre [(every? string? [db-filepath ndmeta-filepath])]}
@@ -105,7 +107,7 @@
           (ndio/serialize-db (-> (dissoc db-info :timestamp)
                                  (assoc :version "0.9.0" ;; TODO version!
                                         :idx-id idx-id
-                                        :as-of timestamp))
+                                        :as-of (delay timestamp)))
                              (:index db-info)
                              serialized-filename)
           :upgraded))

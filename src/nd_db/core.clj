@@ -19,10 +19,12 @@
   "Creates a database var which can be used to perform queries"
   [& {:keys [id-fn filename] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (-> params
-      (dissoc id-fn)
-      (assoc :version "0.9.0" ;; TODO version!
-             :index (delay (ndix/create-index filename id-fn)))))
+  (let [index (delay (ndix/create-index filename id-fn))]
+    (-> params
+        (dissoc id-fn)
+        (assoc :version "0.9.0" ;; TODO version!
+               :index index
+               :as-of (delay (-> @index meta :as-of))))))
 
 (defn- persisted-db [params]
   (let [serialized-filepath (ndio/serialized-db-filepath params)]
