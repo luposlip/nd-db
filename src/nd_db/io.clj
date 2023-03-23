@@ -12,8 +12,7 @@
              [io :as ndio]
              [id-fns :as ndid]
              [csv :as csv]])
-  (:import [java.io File BufferedInputStream Writer BufferedWriter]
-           [org.apache.commons.compress.compressors CompressorInputStream CompressorStreamFactory]))
+  (:import [java.io File Writer BufferedWriter]))
 
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
@@ -38,7 +37,9 @@
     (.write (->str data))
     (.newLine)))
 
-(defn path->folder+filename [filepath]
+(defn path->folder+filename
+  "Splits filename into path/folder and filename"
+  [filepath]
   (let [ptrn (re-pattern File/separator)
         parts (s/split filepath ptrn)]
     [(s/join File/separator (butlast parts)) (last parts)]))
@@ -193,7 +194,3 @@
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))
-
-(defn compressed-input-stream ^CompressorInputStream [filename]
-  (let [in ^BufferedInputStream (io/input-stream filename)]
-    (.createCompressorInputStream (CompressorStreamFactory.) in)))

@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents (v1.0.0)
 
+## [0.9.0-beta2] - 2023-03-23
+
+### Added
+
+- `nd-db.compress` namespace containing input- and output-stream convenience fns
+
+
 ## [0.9.0-beta1] - 2023-03-19
 
 ### Added
