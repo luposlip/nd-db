@@ -3,7 +3,9 @@
              [edn :as edn]
              [string :as s]]
             [clojure.java.io :as io]
-            [nd-db.util :as ndut]))
+            [nd-db
+             [util :as ndut]
+             [csv :as ndcs]]))
 
 (defn name-type->id+fn
   "Generates valid :id-fn input based on :id-name, :id-type and
@@ -69,7 +71,7 @@
   (let [ptrn (re-pattern col-separator)
         col-str (with-open [r (io/reader filename)]
                   (-> r line-seq first))
-        cols (ndut/col-str->key-vec ptrn col-str)
+        cols (ndcs/col-str->key-vec ptrn col-str)
         id-col-idx (ndut/index-of id-path cols)]
     (if (number? id-col-idx)
       {:id-fn (fn [row-str]

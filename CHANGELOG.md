@@ -7,6 +7,11 @@ All notable changes to this project will be documented in this file. This change
 
 - Append documents (v1.0.0)
 
+## [0.9.0-beta3+4] - 2023-03-23+27
+
+Minor refactoring
+
+
 ## [0.9.0-beta2] - 2023-03-23
 
 ### Added

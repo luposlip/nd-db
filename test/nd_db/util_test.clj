@@ -15,6 +15,3 @@
   (is (= 2 (sut/index-of :c [:a :b :c])))
   (is (nil? (sut/index-of :e [:a :b :c])))
   (is (= 1 (sut/index-of [:c :d] {:a :b :c :d}))))
-
-(deftest col-str->key-vec
-  (is (= [:a :b :c] (sut/col-str->key-vec #"," "a,B , C"))))

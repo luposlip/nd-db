@@ -1,5 +1,4 @@
-(ns nd-db.util
-  (:require [clojure.string :as s]))
+(ns nd-db.util)
 
 (defn- num-chars* []
   (->> (range 48 58)
@@ -46,12 +45,6 @@
               :else false)
         false)
       true)))
-
-(defn col-str->key-vec
-  "Converts a CSV key column string to a vector of keywords.
-   Trims and lower-cases before converting to keyword."
-  [col-split-pattern col-str]
-  (mapv (comp keyword s/lower-case s/trim) (s/split col-str col-split-pattern)))
 
 (defn index-of
   "Returns the index of item in the sequential collection.

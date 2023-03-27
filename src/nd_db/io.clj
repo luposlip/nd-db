@@ -11,7 +11,7 @@
              [util :as ndut]
              [io :as ndio]
              [id-fns :as ndid]
-             [csv :as csv]])
+             [csv :as ndcs]])
   (:import [java.io File Writer BufferedWriter]))
 
 (defn tmpdir []
@@ -90,7 +90,7 @@
     :json #(json/parse-string % true)
     :edn edn/read-string
     :nippy ndio/str->
-    :csv (csv/csv-row->data params)
+    :csv (ndcs/csv-row->data params)
     :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
 (defn- ^{:deprecated "v0.9.0"} _parse-db
@@ -187,7 +187,7 @@
                    (assoc :col-separator col-separator
                           :id-path id-path
                           :cols (with-open [r (io/reader filename)]
-                                  (ndut/col-str->key-vec
+                                  (ndcs/col-str->key-vec
                                    (re-pattern col-separator)
                                    (first (line-seq r))))))]
       (with-meta (assoc parsed :doc-parser (params->doc-parser parsed)) {:parsed? true}))))
