@@ -97,16 +97,19 @@
   (testing "throw exception when using .ndedn plus :id-name/:id-type combo"
     (is (thrown? clojure.lang.ExceptionInfo
                  (#'sut/raw-db (ndio/parse-params {:id-name "id"
-                                                 :id-type :integer
-                                                 :filename "resources/test/test.ndedn"})))))
+                                                   :id-type :integer
+                                                   :filename "resources/test/test.ndedn"})))))
 
   (testing ".ndedn works with :id-rx-str"
+    (is (= {:id 312 :adresse "Adresse 3"}
+           (sut/q (#'sut/raw-db (ndio/parse-params {:id-rx-str ":id (\\d+)"
+                                                    :filename "resources/test/test.ndedn"}))
+                  312)))
     (is (= [{:id 312 :adresse "Adresse 3"}
             {:id 123 :adresse "Adresse 1"}]
            (vec (sut/q (#'sut/raw-db (ndio/parse-params {:id-rx-str "^\\{:id (\\d+)"
-                                                       :filename "resources/test/test.ndedn"}))
+                                                         :filename "resources/test/test.ndedn"}))
                        [312 100 123]))))))
-
 
 (deftest explicit-index-folder
   (let [folder (str (System/getProperty "java.io.tmpdir") "/explicit-folder")
