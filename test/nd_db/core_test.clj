@@ -153,3 +153,10 @@
       (let [ids (sut/lazy-ids r)]
         (is (= clojure.lang.LazySeq (type ids)))
         (is (= 3 (count ids)))))))
+
+(deftest query-csv
+  (let [db (sut/db :filename "resources/test/test.csv"
+                   :col-separator ","
+                   :id-path :a)]
+    (is (= {:a "c", :b 5, :c 6} (sut/q db "c")))
+    (is (= {:a 3, :b "b", :c 4} (sut/q db 3)))))
