@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file. This change
 
 ### TODO
 
-- Append documents (v1.0.0)
+## [0.9.0-beta5] - 2023-04-20
+
+Add convenience compression functions
 
 ## [0.9.0-beta3+4] - 2023-03-23+27
 

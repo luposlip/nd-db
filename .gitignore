@@ -11,3 +11,4 @@ pom.xml.asc
 .hgignore
 .hg/
 resources/TU_verified.ndjson
+resources/test/*.nddbmeta

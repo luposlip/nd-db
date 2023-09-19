@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.9.0-beta4"]
+[com.luposlip/nd-db "0.9.0-beta5"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -237,10 +237,13 @@ than 2 minutes (NB: This is with a single core, and BEFORE 0.4.0).
 
 Since the database uses disk random access, SSD speed up the database significantly.
 
-** Update **
+**Update**
 
 On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 ms!
 
+**Another update with version `0.9.0-beta4`**
+
+On the same M1 Pro as mentioned above, the index creation takes around 1 second, and querying the 3 documents, 1000 times, takes less than 0.3ms!
 
 ## Copyright & License
 
