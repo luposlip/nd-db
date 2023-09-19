@@ -157,5 +157,11 @@
 
     :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
 
-(defn append [db doc]
-  (throw (Exception. "Not implemented yet!")))
+(defn append [{:keys [doc-emitter] :as db} doc]
+  (let [doc-emission-str (doc-emitter doc)]
+    #_(-> db
+       (append-to-the-database doc-emission-str)
+       (ndix/append doc doc-emission-str)
+       be-happy)
+    (throw (ex-info "Not done yet!" {:doc doc
+                                     :doc-emission-str doc-emission-str}))))

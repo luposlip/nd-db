@@ -125,6 +125,4 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
     (with-open [w (writer db serialized-filename)]
       (#'ndio/write-nippy-ln w [doc-id idx-vec])
       (.flush w))
-    (update db :index (fn [old]
-                        (prn 'old @old)
-                        (delay (assoc @old doc-id idx-vec))))))
+    (update db :index #(delay (assoc (deref %) doc-id idx-vec)))))
