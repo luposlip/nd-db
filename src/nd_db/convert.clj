@@ -1,15 +1,17 @@
 (ns nd-db.convert
-  (:require [clojure.java.io :as jio]
+  (:require [clojure.string :as s]
+            [clojure.java.io :as io]
             [clojure.core.reducers :as r]
+            [taoensso.nippy :as nippy]
             [nd-db
              [core :as nddb]
              [io :as ndio]
              [util :as util]])
   (:import [java.time Instant]))
 
-(defn ->ndnippy
+(defn db->ndnippy
   "Converts .ndjson and .ndedn files to .ndnippy.
-  
+
   .ndnippy is MUCH faster (~10x) and requires less memory to process.
 
   Also the resulting database size _CAN BE_ much smaller:
@@ -27,9 +29,10 @@
   ->ndnippy-db, since it runs in parallel on available cores."
   [in-db out-filename]
   {:pre [(util/db? in-db)]}
-  (with-open [writer (jio/writer out-filename)]
-    (->> @in-db
+  (with-open [writer (io/writer out-filename)]
+    (->> in-db
          :index
+         deref
          keys
          (into [])
          (r/map (partial nddb/q in-db))
@@ -37,7 +40,7 @@
          (r/fold 50 r/cat r/append!)
          count)))
 
-(defn ->ndnippy-db
+(defn db->ndnippy-db
   "Converts .ndjson and .ndedn files to .ndnippy, and returns the
   corresponding database.
 
@@ -53,22 +56,61 @@
   [in-db {:keys [filename id-path id-fn]}]
   {:pre [(util/db? in-db)
          (string? filename)
-         (or (vector? id-path) (fn? id-fn))]}
-  (let [id-fn (or id-fn #(get-in % id-path))]
+         (or (vector? id-path) (fn? id-fn))]
+   :post [(util/db? %)]}
+  (let [id-fn (or id-fn #(get-in % id-path))
+        index (delay (with-meta
+                       (into {} (with-open [w (io/writer filename)]
+                                  (reduce
+                                   (fn [index id]
+                                     (let [doc (nddb/q in-db id)
+                                           id (id-fn doc)
+                                           last-byte-idx (or (some-> index peek (partial apply +)) 0)
+                                           byte-size (ndio/append+newline w)]
+                                       (conj index [id [(inc last-byte-idx) byte-size]])))
+                                   []
+                                   (-> @in-db
+                                       :index
+                                       keys))))
+                       {:as-of (Instant/now)}))]
     {:filename filename
-     :index (into {} (with-open [w (jio/writer filename)]
-                       (reduce
-                        (fn [index id]
-                          (let [doc (nddb/q in-db id)
-                                id (id-fn doc)
-                                last-byte-idx (or (some-> index peek (partial apply +)) 0)
-                                byte-size (ndio/append+newline w)]
-                            (conj index [id [(inc last-byte-idx) byte-size]])))
-                        []
-                        (-> @in-db
-                            :index
-                            keys))))
+     :index index
      :doc-type :nippy
-     :timestamp (str (Instant/now))}))
+     :as-of (delay (-> @index meta :as-of))}))
 
+(defn paths->idx-id [db-filepath ndmeta-filepath]
+  {:pre [(every? string? [db-filepath ndmeta-filepath])]}
+  (let [md5 (#'ndio/ndfile-md5 db-filepath)]
+    (-> ndmeta-filepath
+        (s/split (re-pattern md5))
+        last
+        (s/split #"\.")
+        first)))
 
+(defn upgrade-nddbmeta!
+  "Takes nddbmeta filepaths init param.
+
+   If :idx-id is not contained of the old nddbmeta, requires additional
+   param for database filepath.
+
+   Upgrades the corresponding nddbmeta file.
+   Keeps old file by adding \"_old\" to filename.
+   Returns nil if file doesn't exist.
+   Logs if already upgraded."
+  [{:keys [filename serialized-filename]}]
+  (when (.isFile (io/file serialized-filename))
+    (try
+      (let [{:keys [version idx-id timestamp] :as db-info}
+            (nippy/thaw-from-file serialized-filename)
+            idx-id (or idx-id (paths->idx-id filename serialized-filename))]
+        (when-not version
+          (ndio/mv-file serialized-filename (str serialized-filename "_old"))
+          (ndio/serialize-db (-> (dissoc db-info :timestamp)
+                                 (assoc :version "0.9.0" ;; TODO version!
+                                        :idx-id idx-id
+                                        :as-of (delay timestamp)))
+                             (:index db-info)
+                             serialized-filename)
+          :upgraded))
+      (catch Exception _
+        :already-upgraded))))

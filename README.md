@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.8.0"]
+[com.luposlip/nd-db "0.9.0-beta5"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -18,7 +18,7 @@ A very tiny *test database* resides in `resources/test/test.ndjson`.
 
 It contains the following 3 documents, that has `"id"` as their unique IDs:
 
-```json
+``` json
 {"id":1, "data": ["some", "semi-random", "data"]}
 {"id":222, "data": 42}
 {"id":333333,"data": {"datakey": "datavalue"}}
@@ -30,17 +30,20 @@ Since version `0.2.0` you need to create a database var before you can use the
 database. Behind the scenes this creates an index for you in a background thread.
 
 ```clojure
-(def db (nd-db.core/db {:id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
-                        :filename "resources/test/test.ndjson"}))
+(def db
+  (nd-db.core/db
+    :id-fn #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
+    :filename "resources/test/test.ndjson"))
 ```
 
 If you want a default `:id-fn` created for you, use the `:id-name` together with `:id-type` and/or `:source-type`. Both `:id-type` and `:source-type` can be `:string` or `:integer`. `:id-type` is the target type of the indexed ID, whereas `:source-type` is the type in the source `.ndjson` database file. `:source-type` defaults to `:id-type`, and `:id-type` defaults to `:string`:
 
 ```clojure
-;; Note the clojure 1.11 style params below (v0.7.0+):
-(def db (nd-db.core/db :id-name "id"
-                       :id-type :integer
-                       :filename "resources/test/test.ndjson"}))
+(def db
+  (nd-db.core/db
+    :id-name "id"
+    :id-type :integer
+    :filename "resources/test/test.ndjson"}))
 ```
 
 ### EDN
@@ -114,6 +117,68 @@ database. Which is why the input to `q` are `Integer` instances.
 
 Refer to the test for more details.
 
+## Laziness!
+
+Since v0.9.0 both the index and the documents can be retrieved in a truly lazy fashion.
+
+Getting the those lazy seqs are possible, since v0.9.0 introduces a new meta+index file format,
+that makes lazy traversal of the index possible.
+
+The downside to the support for laziness is the size of the meta+index files,
+which in my tested scenarios have grown with 100%. This means a `.ndnippy`
+database of 16.8GB containing ~300k huge documents (of 200-300Kb each in raw
+JSON/EDN form) has grown form ~5MB to ~10MB.
+
+This is not a problem at all in real life, since when you need the realized
+in-memory index (for ad-hoc querying by ID), it still consumes the same amount
+of memory as before (in the above example ~3MB).
+
+### Lazy IDs
+
+Here's an example on how to get and use the the lazy IDs:
+
+``` clojure
+(with-open [r (nd-db.index/reader my-db)]
+  (->> r
+       nd-db.core/lazy-ids
+       (drop 100000)
+       (take 100)
+       (sort >)
+       first))
+```
+
+### Lazy Documents
+
+NB: This currently (v0.9.0) only works for `.ndnippy` databases!
+
+Getting the documents contained in a `nippy` document based database, is just as
+simple as getting the IDs:
+
+``` clojure
+(with-open [r (nd-db.index/reader my-db)]
+  (->> r
+       (nd-db.core/lazy-docs my-db)
+       (drop 100000)
+       (take 100)
+       (sort-by :some-value >)
+       first))
+```
+
+The above example spends ~1ms on my laptop (mbp m1 pro) per dropped document, which isn't a lot.
+But if you don't actually need (most of) the documents, it's much faster to use the IDs as entry,
+like in this example:
+
+``` clojure
+(with-open [r (nd-db.index/reader my-db)]
+  (->> r
+       nd-db.core/lazy-ids
+       (drop 100000)
+       (take 100)
+       (q my-db)
+       (sort-by :some-value >)
+       first))
+```
+
 ## Persisting the database index
 
 From v0.5.0 the generated index will be persisted to the temporary system folder on disk.
@@ -124,14 +189,16 @@ as compared to parsing the database file.
 For small files (like the sample databases found in this repository) it doesn't really make a difference.
 But for huge files, it makes an immense difference. The bigger the databases, the bigger the individual
 documents and the more complex the parsing of these documents are (to find the unique ID), the bigger
-the difference. For a .database file of 4.7GB the difference is 47s vs 90ms, or **~500 times faster**!!
+the difference. For a database file of 4.7GB the difference is 47s vs 90ms, or **~500 times faster**!!
 
-If you want to keep the serialized index file (`*.nddbmeta`) between system reboots, you should move it
-to another folder. You do that by using the parameter `:index-folder` to the `db` function.
+If you want to keep the serialized meta+index file (`*.nddbmeta`) between system reboots, you should move it
+to another folder. You do that by passing `:index-folder` to the `db` function.
 
 If for some reason you don't want to persist the index - e.g. there's no storage attached to a docker
 container or serverless system - you can inhibit the persistence by setting param `:index-persist?`
 to `false`.
+
+From `v0.9.0` onwards the index is generated in parallel. This cuts two thirds of the processing time.
 
 For more information on these and other parameters, see the source code for the `db` function in the
 `core` namespace.
@@ -165,15 +232,18 @@ query of the above 3 verified Twitter users takes around 1 millisecond
 
 In real usage scenarios, I've used 2 databases simultaneously of sizes 1.6 GB and
 43.0 GB, with no problem or performance penalties at all (except for the relatively small
-size of the in-memory indices of course). Indexing the biggest database of 43GB took less
+size of the in-memory indexes of course). Indexing the biggest database of 43GB took less
 than 2 minutes (NB: This is with a single core, and BEFORE 0.4.0).
 
 Since the database uses disk random access, SSD speed up the database significantly.
 
-** Update **
+**Update**
 
 On a MacBook Pro M1 Pro with 32 GB memory, the querying takes around 0.5 ms!
 
+**Another update with version `0.9.0-beta4`**
+
+On the same M1 Pro as mentioned above, the index creation takes around 1 second, and querying the 3 documents, 1000 times, takes less than 0.3ms!
 
 ## Copyright & License
 

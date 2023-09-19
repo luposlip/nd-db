@@ -5,8 +5,162 @@ All notable changes to this project will be documented in this file. This change
 
 ### TODO
 
-- CSV as database files
-- Insert
+## [0.9.0-beta5] - 2023-04-20
+
+Add convenience compression functions
+
+## [0.9.0-beta3+4] - 2023-03-23+27
+
+Minor refactoring
+
+
+## [0.9.0-beta2] - 2023-03-23
+
+### Added
+
+- `nd-db.compress` namespace containing input- and output-stream convenience fns
+
+
+## [0.9.0-beta1] - 2023-03-19
+
+### Added
+
+- Support for CSV/TSV files as databases
+
+### TODO
+
+- Revamp documentation
+
+## [0.9.0-alpha6] - 2023-03-19
+
+### Added
+
+Utility function `nd-db.convert/upgrade-nddbmeta!` converts your old pre-v0.9.0
+nddbmeta files to the new format, and keeps the old under the same name with
+`_old` appended to the file name.
+
+### Enhanced
+
+Internally the database is now no longer a future. Instead the :index is a
+delay. This means immediate initialization of the db value, and that the
+:index doesn't get realized until you start querying.
+
+This also means that the `lazy-docs` and `lazy-ids` make even better sense
+if you just want to traverse the database sequentially, because in that case
+you're not using the realized index at all.
+
+The external API for the library is unchanged. You initialize the database
+value in the same way, and you query it the same way too.
+
+## [0.9.0-alpha5] - 2023-03-17
+
+### Fixed
+
+- `lazy-ids` failed in some cases when moving index
+
+## [0.9.0-alpha4] - 2023-03-17
+
+### Fixed
+
+- `lazy-ids` now work when moving nddbmeta file around (i.e. with the db file)
+
+### Changed
+
+- Default now is to generate the index in the same folder as the database. Previously the default was the filesystem temp folder.
+- nddbmeta files now only contain the serialized filename, as opposed to before where it was the complete path.
+
+### Added
+
+- Reader for compressed non-nippy nd* files
+
+## [0.9.0-alpha3] - 2023-03-09
+
+### Enhanced
+
+- Parallelized index-creation - takes 2/3 less time than before (mbp m1)!
+- Potentially more stable serialization of index (flushing every 1000 lines)
+
+### TODO
+
+- `lazy-ids` has internal `BufferedReader`. Should be passed from `with-open`.
+- conversion function for pre-v0.9.0 `.nddbmeta` files.
+- skip the realization of the index when generating the db value (= refactor)
+
+## [0.9.0-alpha2] - 2023-03-08
+
+### Changed
+
+`lazy-docs` now works with eager indexes:
+
+``` clojure
+(lazy-docs nd-db)
+```
+
+Or with lazy indexes:
+
+``` clojure
+(with-open [r (nd-db.index/reader nd-db)]
+  (->> nd-db
+       (lazy-docs r)
+       (drop 1000000)
+       (filter (comp pos? :amount))
+       (sort-by :priority)
+       (take 10)))
+```
+
+NB: For convenience this also works, without any penalty:
+
+``` clojure
+(with-open [r (nd-db.index/reader nd-db)]
+  (->> r
+       (lazy-docs nd-db)
+       ...
+       (take 10)))
+```
+
+
+### TODO
+
+Still need to make the conversion function for pre-v0.9.0 `.nddbmeta` files.
+
+## [0.9.0-alpha1] - 2023-03-07
+
+WIP! `lazy-docs` might change signature when using the new `index-reader`!
+
+### (almost) breaking changes
+
+- new format for metadata/index `.nddbmeta` file
+
+The new format makes it much faster to initialize and sequentially read through
+the whole database. The change will make the most impact for humongous databases
+with millions of huge documents.
+
+Old indexes will not be readable anymore. Good news is that there will be a new
+`nd-db.convert/upgrade-nddbmeta!` utility function, which can converts your old
+file to the new format, and overwrite it.
+
+The downside to the support for laziness is the size of the meta+index files,
+which in my tested scenarios have grown with 100%. This means a database
+containing ~300k huge documents (of 200-300Kb each in raw JSON/EDN form) has
+grown form ~5MB to ~10MB.
+
+This is not a problem at all in real life, since when you need the realized
+in-memory index (for ad-hoc querying by ID), it still consumes the same amount
+of memory as before (in the above example ~3MB).
+
+And compared to the database it describes it's nothing - the above mentioned
+index is for a `.ndnippy` database of 16.8GB.
+
+### Other changes
+
+- because of the change to the metadata format, the `lazy-docs` introduced with
+`v0.8.0` is now much more efficient. Again this is most noticable when you need
+to read sequentially through parts of a huge database.
+
+### Removed
+
+Dependency `buddy/buddy-core` not needed anymore. Instead using built-in similar
+functionality from `com.taoensso/nippy`.
 
 ## [0.8.0] - 2023-02-28
 

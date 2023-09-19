@@ -1,71 +1,34 @@
 (ns nd-db.core
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.core.reducers :as r]
-            [cheshire.core :as json]
+  (:require [clojure.java.io :as io]
             [nd-db
-             [util :as ndut]
-             [io :as ndio]])
-  (:import [java.time Instant]
-           [java.io File RandomAccessFile]))
+             [io :as ndio]
+             [index :as ndix]
+             [util :as ndut]])
+  (:import [java.io File RandomAccessFile BufferedReader]))
 
-(defn reducr [id-fn]
-  (fn [acc line]
-    (let [len (count (.getBytes ^String line))
-          id (id-fn line)
-          [_ start plen] (or (peek acc) [nil -1 0])]
-      ;; TODO concat into list for parallelization
-      (conj acc [id (+ 1 start plen) len]))))
-
-(defn combinr
-  ([] []) ;; TODO: Lazify for parallelization
-  ([_] [])
-  ([acc more]
-   (let [[_ prev-start prev-len] (or (peek acc) [nil -1 0])
-         prev-offset (+ 1 prev-start prev-len)]
-     (reduce
-      (fn [a [id old-start len]]
-        (conj a [id (+ prev-offset old-start) len]))
-      acc
-      more))))
-
-(defn create-index
-  "Builds up an index of Entity IDs as keys (IDs extracted with id-fn),
-  and as value a vector with 2 values:
-  - the start index in the text file to start read EDN for the input doc
-  - the length in bytes input doc"
-  [filename id-fn]
-  {:pre [(string? filename)
-         (fn? id-fn)]}
-  (with-open [rdr (io/reader filename)]
-    (->> rdr
-         line-seq ;; for parallel processing, enable line below!
-         ;;(into [])
-         (r/fold (or (some-> (System/getenv "NDDB_LINES_PER_CORE")
-                             edn/read-string)
-                     512)
-                 combinr
-                 (reducr id-fn))
-         (reduce
-          (fn [acc i]
-            (assoc acc (first i) (into [] (rest i))))
-          {}))))
-
-(defn index-id
-  "This function generates a pseudo unique index ID for the combination
-  of the ID function and the filename."
-  [& {:keys [filename id-fn]}]
-  (with-open [in (io/reader filename)]
-    (mapv id-fn (take 10 (line-seq in)))))
-
-(defn raw-db
+(defn- raw-db
   "Creates a database var which can be used to perform queries"
-  [{:keys [id-fn filename doc-type] :as params}]
+  [& {:keys [id-fn filename doc-type] :as params}]
   {:pre [(-> params meta :parsed?)]}
-  (future {:filename filename
-           :index (create-index filename id-fn)
-           :doc-type doc-type
-           :timestamp (str (Instant/now))}))
+  (let [index (delay (ndix/create-index
+                      filename id-fn
+                      (when (= :csv doc-type)
+                        :skip-first!)))]
+    (-> params
+        (dissoc :id-fn)
+        (assoc :version "0.9.0" ;; TODO version!
+               :index index
+               :as-of (delay (-> @index meta :as-of))))))
+
+(defn- persisted-db [params]
+  (let [serialized-filepath (ndio/serialized-db-filepath params)]
+    (if (.isFile ^File (io/file serialized-filepath))
+      (ndio/parse-db params serialized-filepath)
+      (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)]
+        (-> params
+            (assoc :serialized-filename serialized-filename)
+            raw-db
+            ndio/serialize-db)))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -94,11 +57,20 @@
   {:post [(ndut/db? %)]}
   (let [{:keys [index-persist?] :as params} (apply ndio/parse-params _params)]
     (if index-persist?
-      (let [serialized-filename (ndio/serialize-db-filename params)]
-        (if (.isFile ^File (io/file serialized-filename))
-          (ndio/parse-db params serialized-filename)
-          (ndio/serialize-db serialized-filename (raw-db params))))
+      (persisted-db params)
       (raw-db params))))
+
+(defn- read-nd-doc
+  "Takes a doc-parser fn, a nd-db file and start and length.
+   Return the document."
+  [doc-parser ^File db-file start len]
+  (when (and start len)
+    (let [bytes (byte-array len)]
+      (doto (RandomAccessFile. db-file "r")
+        (.seek start)
+        (.read bytes 0 len)
+        (.close))
+      (doc-parser (String. bytes)))))
 
 (defmulti q
   "Queries a single or multiple docs from the database by a single or
@@ -111,41 +83,76 @@
           :single
           :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
 
-(defn parse-doc [db doc-str]
-  (condp = (:doc-type @db)
-    :json (json/parse-string doc-str true)
-    :edn (edn/read-string doc-str)
-    :nippy (ndio/str-> doc-str)
-    (throw (ex-info "Unknown doc-type" {:doc-type (:doc-type @db)}))))
-
 (defmethod q :single query-single
   [db id]
   {:pre [(ndut/db? db)
          (not (nil? id))]}
-  (let [[start len] (get (:index @db) id)
-        bytes (byte-array len)]
-    (when (and start len)
-      (doto (RandomAccessFile. ^String (:filename @db) "r")
-        (.seek start)
-        (.read bytes 0 len)
-        (.close))
-      (->> bytes
-           (String.)
-           (parse-doc db)))))
+  (let [[start len] (get @(:index db) id)
+        nd-file (io/file ^String (:filename db))]
+    (read-nd-doc (:doc-parser db) nd-file start len)))
 
 (defmethod q :sequential query-multiple
   [db ids]
-  {:pre [(ndut/db? db)
-         (sequential? ids)]}
+  {:pre [(sequential? ids)]}
   (keep (partial q db) ids))
+
+(defn- lazy-docs-eager-idx
+  "This will work for any database metadata version.
+   If no metadata exist, that will be generated first (which may take a while
+   for big databases).
+
+   Furthermore huge databases will have their index realized, before returning
+   the lazy seq of documents.
+
+   If this is not wanted, get a with-open a nd-db.io/db->reader+parser and call
+   lazy-docs with that."
+  [db ids]
+  (lazy-seq
+   (when (seq ids)
+     (cons (q db (ffirst ids))
+           (lazy-docs-eager-idx db (rest ids))))))
+
+(defn- lazy-docs-lazy-idx [nippy-parser nd-file ^BufferedReader reader]
+  (lazy-seq
+   (when-let [line (.readLine reader)]
+     (cons (let [[_ [start len]] (nippy-parser line)]
+             (read-nd-doc nippy-parser nd-file start len))
+           (lazy-docs-lazy-idx nippy-parser nd-file reader)))))
 
 (defn lazy-docs
   ([db]
-   (let [ids (:index @db)]
-     (lazy-docs db (lazy-seq ids))))
-  ([db ids]
-   (lazy-seq
-    (when (seq ids)
-      (let [doc (q db (ffirst ids))]
-        (cons doc
-              (lazy-docs db (rest ids))))))))
+   {:pre [(ndut/db? db)]}
+   (when (:version db)
+     (println "You should use (with-open [r (nd-db.index/reader db)] (lazy-docs db r)) instead!")
+     (lazy-docs-eager-idx db (lazy-seq @(:index db)))))
+  ([a b]
+   {:pre [(every? (some-fn map? (partial instance? BufferedReader)) [a b])]}
+   (let [[db] (filter map? [a b])
+         [reader] (filter (partial instance? BufferedReader) [a b])]
+     (lazy-docs-lazy-idx ndio/str->
+                         (io/file (:filename db))
+                         reader))))
+
+(defn- lazy-ids-lazy-idx [nippy-parser ^BufferedReader reader]
+  (lazy-seq
+   (when-let [line (.readLine reader)]
+     (cons (-> line nippy-parser first)
+           (lazy-ids-lazy-idx nippy-parser reader)))))
+
+(defn lazy-ids
+  "Returns a lazy seq of the IDs in the index.
+   When using index-reader, the order is guaranteed to be the same as the
+   order in the database."
+  [i]
+  (when (and (ndut/db? i)
+             (ndut/v090+? i))
+    (println "For true laziness pass nd-db.index/reader to lazy-ids!"))
+
+  (cond
+    (ndut/db? i)
+    (->> i :index deref (map first))
+
+    (= BufferedReader (class i))
+    (lazy-ids-lazy-idx ndio/str-> i)
+
+    :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
