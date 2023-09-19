@@ -100,11 +100,9 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it,
 Consider converting the index via nd-db.convert/upgrade-nddbmeta!
 (or delete it, which will recreate it automatically)."
                     db)))
-  (BufferedWriter.
-   (FileWriter. ^String
-                (or serialized-filename
-                    (ndio/serialized-db-filepath db))
-                true)))
+  (let [filename ^String (or serialized-filename
+                             (ndio/serialized-db-filepath db))]
+    (BufferedWriter. (FileWriter. (io/file filename) true))))
 
 (defn append
   "Return af BufferedWriter for the database index.
