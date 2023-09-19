@@ -3,9 +3,12 @@
             [clojure.core.reducers :as r]
             [nd-db
              [util :as ndut]
-             [io :as ndio]])
+             [io :as ndio]]
+            [clojure.edn :as edn])
   (:import [java.time Instant]
-           [java.io BufferedReader FileReader BufferedWriter]))
+           [java.io
+            BufferedReader FileReader
+            BufferedWriter FileWriter]))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -89,8 +92,41 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it,
     (.readLine r) ;; first line isn't part of the index
     r))
 
-(defn writer
+(defn- writer ^BufferedWriter [db & [serialized-filename]]
+  {:pre [((some-fn nil? string?) serialized-filename)]
+   :post [(instance? BufferedWriter %)]}
+  (when-not (ndut/v090+? db)
+    (throw (ex-info "Pre v0.9.0 .nddbmeta format - cannot append to index.
+Consider converting the index via nd-db.convert/upgrade-nddbmeta!
+(or delete it, which will recreate it automatically)."
+                    db)))
+  (BufferedWriter.
+   (FileWriter. ^String
+                (or serialized-filename
+                    (ndio/serialized-db-filepath db))
+                true)))
+
+(defn append
   "Return af BufferedWriter for the database index.
    Use in a with-open block or close explicitly."
-  ^BufferedWriter [db]
-  (throw (Exception. "Not implemented yet!")))
+  [{:keys [id-fn id-path] :as db} doc doc-emission-str]
+  {:pre [(ndut/db? db)
+         (or (ifn? id-fn)
+             ((some-fn keyword? vector?) id-path))
+         (map? doc)]
+   :post [(ndut/db? %)]}
+  (let [doc-id ((or id-fn #(if (keyword? id-path)
+                             (id-path %)
+                             (get-in % id-path))) doc)
+        serialized-filename (ndio/serialized-db-filepath db)
+        [_ [offset length]] (-> serialized-filename
+                                ndio/last-line
+                                ndio/str->)
+        idx-vec [(inc (+ offset length)) (count doc-emission-str)]]
+
+    (with-open [w (writer db serialized-filename)]
+      (#'ndio/write-nippy-ln w [doc-id idx-vec])
+      (.flush w))
+    (update db :index (fn [old]
+                        (prn 'old @old)
+                        (delay (assoc @old doc-id idx-vec))))))

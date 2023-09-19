@@ -11,8 +11,9 @@
              [util :as ndut]
              [io :as ndio]
              [id-fns :as ndid]
-             [csv :as ndcs]])
-  (:import [java.io File Writer BufferedWriter]))
+             [csv :as ndcs]]
+            [clojure.string :as str])
+  (:import [java.io File Writer BufferedWriter RandomAccessFile]))
 
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
@@ -70,7 +71,7 @@
      ;; writing to EDN string takes ~5x longer than using nippy+b64
      (write-nippy-ln w (dissoc db-info
                                :index :as-of
-                               :id-fn :col-parser :doc-parser
+                               :id-fn :col-parser :doc-parser :doc-emitter
                                :index-persist?))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
@@ -91,6 +92,14 @@
     :edn edn/read-string
     :nippy ndio/str->
     :csv (ndcs/csv-row->data params)
+    :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+
+(defn params->doc-emitter [{:keys [doc-type] :as params}]
+  (case doc-type
+    :json json/encode
+    :edn str
+    :nippy ndio/->str
+    :csv (ndcs/data->csv-row params)
     :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
 (defn- ^{:deprecated "v0.9.0"} _parse-db
@@ -115,7 +124,8 @@
                                         rest
                                         (map str->)
                                         (into {}))))
-                   :doc-parser (params->doc-parser params))
+                   :doc-parser (params->doc-parser params)
+                   :doc-emitter (params->doc-emitter params))
             (maybe-update-filename filename))))
     (catch Exception e
       (when (or (-> e ex-message (s/includes? "String.getBytes"))
@@ -161,7 +171,8 @@
                 (:id-fn %)
                 (:idx-id %)
                 (:doc-type %)
-                (:doc-parser %))]}
+                (:doc-parser %)
+                (:doc-emitter %))]}
   (let [doc-type (infer-doctype filename)]
     (when (and id-path (and (not col-separator)
                             (not= :nippy doc-type)))
@@ -190,7 +201,25 @@
                                   (ndcs/col-str->key-vec
                                    (re-pattern col-separator)
                                    (first (line-seq r))))))]
-      (with-meta (assoc parsed :doc-parser (params->doc-parser parsed)) {:parsed? true}))))
+      (with-meta (-> parsed
+                     (assoc :doc-parser (params->doc-parser parsed))
+                     (assoc :doc-emitter (params->doc-emitter parsed)))
+        {:parsed? true}))))
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))
+
+(defn last-line [filename]
+  (let [file (io/file filename)
+        radfile (RandomAccessFile. file "r")
+        newline (byte \newline)]
+    (loop [pointer (dec (.length file))
+           bytes []
+           first true]
+      (let [byte (do (.seek radfile pointer) (.read radfile))]
+        (if (and (false? first) (= newline byte))
+          (->> bytes reverse (map char) (apply str))
+          (recur (dec pointer) (if (true? first)
+                                 bytes
+                                 (conj bytes byte))
+                 false))))))
