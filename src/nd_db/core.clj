@@ -156,3 +156,6 @@
     (lazy-ids-lazy-idx ndio/str-> i)
 
     :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
+
+(defn append [db doc]
+  (throw (Exception. "Not implemented yet!")))

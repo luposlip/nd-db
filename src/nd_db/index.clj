@@ -5,7 +5,7 @@
              [util :as ndut]
              [io :as ndio]])
   (:import [java.time Instant]
-           [java.io BufferedReader FileReader]))
+           [java.io BufferedReader FileReader BufferedWriter]))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -88,3 +88,9 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it,
   (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath db)))]
     (.readLine r) ;; first line isn't part of the index
     r))
+
+(defn writer
+  "Return af BufferedWriter for the database index.
+   Use in a with-open block or close explicitly."
+  ^BufferedWriter [db]
+  (throw (Exception. "Not implemented yet!")))
