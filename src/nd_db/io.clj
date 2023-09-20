@@ -18,12 +18,28 @@
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
 
+(defn last-line [filename]
+  (let [file (io/file filename)
+        radfile (RandomAccessFile. file "r")
+        newline (byte \newline)]
+    (loop [pointer (dec (.length file))
+           bytes []
+           first true]
+      (let [byte (do (.seek radfile pointer) (.read radfile))]
+        (if (and (false? first) (= newline byte) (< 0 (count bytes)))
+          (->> bytes reverse (map char) (apply str))
+          (recur (dec pointer) (if (true? first)
+                                 bytes
+                                 (conj bytes byte))
+                 false))))))
+
 (defn ndfile-md5
-  "Reads first 10 lines of file, return corresponding MD5"
+  "Reads first and last line of file, return corresponding MD5"
   [filename]
-  (with-open [r (io/reader filename)]
-    (let [input (take 10 (line-seq r))]
-      (digest/md5 (str/join input)))))
+  (let [the-last (last-line filename)
+        size (.size (io/file filename))]
+    (with-open [r (io/reader filename)]
+      (digest/md5 (str/join [(first (line-seq r)) the-last size])))))
 
 (defn ->str ^String [data]
   (nippy/freeze-to-string data))
@@ -208,21 +224,6 @@
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))
-
-(defn last-line [filename]
-  (let [file (io/file filename)
-        radfile (RandomAccessFile. file "r")
-        newline (byte \newline)]
-    (loop [pointer (dec (.length file))
-           bytes []
-           first true]
-      (let [byte (do (.seek radfile pointer) (.read radfile))]
-        (if (and (false? first) (= newline byte) (< 0 (count bytes)))
-          (->> bytes reverse (map char) (apply str))
-          (recur (dec pointer) (if (true? first)
-                                 bytes
-                                 (conj bytes byte))
-                 false))))))
 
 (defn ^BufferedWriter append-writer
   "Return af BufferedWriter for the database index.

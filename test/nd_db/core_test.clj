@@ -212,3 +212,19 @@
             "Check that all docs, old and new, can be correctly read from db"))
       (io/delete-file (ndio/serialized-db-filepath db)))
     (io/delete-file "resources/test/tmp-test.csv")))
+
+(deftest append-new-versions
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (nddb/db {:filename tmp-filename
+                                               :col-separator ","
+                                               :id-path :a})
+        doc {:a 1 :b "movie" :c "sharp"}
+        new-db (sut/append db doc)]
+
+    (is (= {:a 1 :b 2 :c "a"} (nddb/q db 1)) "Old db returns old doc")
+    (is (= doc (nddb/q new-db 1)) "New db returns new version")
+    (io/delete-file (ndio/serialized-db-filepath db))
+    (io/delete-file "resources/test/tmp-test.csv")))
