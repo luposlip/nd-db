@@ -3,12 +3,11 @@
             [clojure.core.reducers :as r]
             [nd-db
              [util :as ndut]
-             [io :as ndio]]
-            [clojure.edn :as edn])
+             [io :as ndio]])
   (:import [java.time Instant]
            [java.io
             BufferedReader FileReader
-            BufferedWriter FileWriter]))
+            BufferedWriter]))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -92,21 +91,19 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it,
     (.readLine r) ;; first line isn't part of the index
     r))
 
-(defn- writer ^BufferedWriter [db & [serialized-filename]]
-  {:pre [((some-fn nil? string?) serialized-filename)]
-   :post [(instance? BufferedWriter %)]}
+(defn- ^BufferedWriter append-writer
+  [db & [serialized-filename]]
+  {:pre [(ndut/db? db)
+         ((some-fn nil? string?) serialized-filename)]}
   (when-not (ndut/v090+? db)
     (throw (ex-info "Pre v0.9.0 .nddbmeta format - cannot append to index.
 Consider converting the index via nd-db.convert/upgrade-nddbmeta!
 (or delete it, which will recreate it automatically)."
                     db)))
-  (let [filename ^String (or serialized-filename
-                             (ndio/serialized-db-filepath db))]
-    (BufferedWriter. (FileWriter. (io/file filename) true))))
+  (ndio/append-writer (or serialized-filename (ndio/serialized-db-filepath db))))
 
 (defn append
-  "Return af BufferedWriter for the database index.
-   Use in a with-open block or close explicitly."
+  "Appends a doc to the index, returns the updated database value."
   [{:keys [id-fn id-path] :as db} doc doc-emission-str]
   {:pre [(ndut/db? db)
          (or (ifn? id-fn)
@@ -122,7 +119,7 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
                                 ndio/str->)
         idx-vec [(inc (+ offset length)) (count doc-emission-str)]]
 
-    (with-open [w (writer db serialized-filename)]
+    (with-open [w (append-writer db serialized-filename)]
       (#'ndio/write-nippy-ln w [doc-id idx-vec])
       (.flush w))
     (update db :index #(delay (assoc (deref %) doc-id idx-vec)))))

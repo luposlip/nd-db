@@ -3,7 +3,8 @@
             [nd-db
              [io :as ndio]
              [index :as ndix]
-             [util :as ndut]])
+             [util :as ndut]]
+            [nd-db.core :as nddb])
   (:import [java.io File RandomAccessFile BufferedReader]))
 
 (defn- raw-db
@@ -157,11 +158,20 @@
 
     :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
 
+(defn- emit-doc [db ^String doc-emission-str]
+  "Emit a serialized document to a database.
+NOT thread safe, only use this from a single thread,
+meaning DON'T do parallel writes to database..!"
+  {:pre [(ndut/db? db)
+         (string? doc-emission-str)]}
+  (with-open [w (ndio/append-writer (:filename db))]
+    (.write w doc-emission-str)
+    (.newLine w)
+    (.flush w))
+  db)
+
 (defn append [{:keys [doc-emitter] :as db} doc]
   (let [doc-emission-str (doc-emitter doc)]
-    #_(-> db
-       (append-to-the-database doc-emission-str)
-       (ndix/append doc doc-emission-str)
-       be-happy)
-    (throw (ex-info "Not done yet!" {:doc doc
-                                     :doc-emission-str doc-emission-str}))))
+    (-> db
+        (emit-doc doc-emission-str)
+        (ndix/append doc doc-emission-str))))

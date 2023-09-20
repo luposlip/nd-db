@@ -5,7 +5,8 @@
              [core :as sut]
              [util :as ndut]
              [io :as ndio]
-             [index :as ndix]]))
+             [index :as ndix]]
+            [nd-db.core :as nddb]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -160,3 +161,20 @@
                    :id-path :a)]
     (is (= {:a "c", :b 5, :c 6} (sut/q db "c")))
     (is (= {:a 3, :b "b", :c 4} (sut/q db 3)))))
+
+(deftest emit-doc
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        {:keys [doc-emitter] :as db} (nddb/db {:filename tmp-filename
+                                               :col-separator ","
+                                               :id-path :a})
+        old-count (-> db :index deref count)
+        new-id (rand-int 99999999)
+        doc {:q "q" :a new-id :b "b movie" :c "sharp"}
+        doc-emission-str (doc-emitter doc)]
+    (#'sut/emit-doc db doc-emission-str)
+    (is (= (str new-id ",b movie,sharp") (ndio/last-line tmp-filename)))
+    (is (= (inc old-count) (-> outf io/reader line-seq count)))
+    (io/delete-file "resources/test/tmp-test.csv")))

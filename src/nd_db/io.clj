@@ -1,6 +1,6 @@
 (ns nd-db.io
   (:require [clojure
-             [string :as s]
+             [string :as str]
              [edn :as edn]]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
@@ -11,9 +11,9 @@
              [util :as ndut]
              [io :as ndio]
              [id-fns :as ndid]
-             [csv :as ndcs]]
-            [clojure.string :as str])
-  (:import [java.io File Writer BufferedWriter RandomAccessFile]))
+             [csv :as ndcs]])
+  (:import [java.io File Writer FileWriter BufferedWriter
+            RandomAccessFile]))
 
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
@@ -23,7 +23,7 @@
   [filename]
   (with-open [r (io/reader filename)]
     (let [input (take 10 (line-seq r))]
-      (digest/md5 (s/join input)))))
+      (digest/md5 (str/join input)))))
 
 (defn ->str ^String [data]
   (nippy/freeze-to-string data))
@@ -42,14 +42,14 @@
   "Splits filename into path/folder and filename"
   [filepath]
   (let [ptrn (re-pattern File/separator)
-        parts (s/split filepath ptrn)]
-    [(s/join File/separator (butlast parts)) (last parts)]))
+        parts (str/split filepath ptrn)]
+    [(str/join File/separator (butlast parts)) (last parts)]))
 
 (defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder serialized-filename]}]
   (let [db-md5 (ndfile-md5 filename)
         [folder-path file-path] (path->folder+filename filename)
         nddbmeta-filename (or serialized-filename
-                              (str (first (s/split file-path #"\."))
+                              (str (first (str/split file-path #"\."))
                                    "_" db-md5
                                    idx-id
                                    ".nddbmeta"))]
@@ -128,13 +128,13 @@
                    :doc-emitter (params->doc-emitter params))
             (maybe-update-filename filename))))
     (catch Exception e
-      (when (or (-> e ex-message (s/includes? "String.getBytes"))
-                (s/includes? (ex-message e) "base64"))
+      (when (or (-> e ex-message (str/includes? "String.getBytes"))
+                (str/includes? (ex-message e) "base64"))
         ;; fallback to pre v0.9.0 metadata standard
         (_parse-db params serialized-filename)))))
 
 (defn append+newline
-  "append to a file, return count of bytes appended"
+  "Append to a ndnippy file, return count of bytes appended"
   [^Writer writer]
   (fn [data]
     (let [data-str (str (->str data) "\n")]
@@ -144,7 +144,7 @@
       (count data-str))))
 
 (defn- infer-doctype [filename]
-  (condp = (last (s/split filename #"\."))
+  (condp = (last (str/split filename #"\."))
     "ndnippy" :nippy
     "ndjson" :json
     "ndedn" :edn
@@ -217,9 +217,17 @@
            bytes []
            first true]
       (let [byte (do (.seek radfile pointer) (.read radfile))]
-        (if (and (false? first) (= newline byte))
+        (if (and (false? first) (= newline byte) (< 0 (count bytes)))
           (->> bytes reverse (map char) (apply str))
           (recur (dec pointer) (if (true? first)
                                  bytes
                                  (conj bytes byte))
                  false))))))
+
+(defn ^BufferedWriter append-writer
+  "Return af BufferedWriter for the database index.
+   Use in a with-open block or close explicitly."
+  [^String filename & _]
+  {:pre [(string? filename)]
+   :post [(instance? BufferedWriter %)]}
+  (BufferedWriter. (FileWriter. (io/file filename) true)))
