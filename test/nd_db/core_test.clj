@@ -175,6 +175,29 @@
         doc {:q "q" :a new-id :b "b movie" :c "sharp"}
         doc-emission-str (doc-emitter doc)]
     (#'sut/emit-doc db doc-emission-str)
-    (is (= (str new-id ",b movie,sharp") (ndio/last-line tmp-filename)))
-    (is (= (inc old-count) (-> outf io/reader line-seq count)))
+    (is (= (ndio/last-line tmp-filename) doc-emission-str))
+    (is (= (+ 2 old-count) (-> outf io/reader line-seq count)) "1 line for header, 1 new ")
+    (io/delete-file (ndio/serialized-db-filepath db))
+    (io/delete-file tmp-filename)))
+
+(deftest append
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        {:keys [doc-emitter] :as db} (nddb/db {:filename tmp-filename
+                                               :col-separator ","
+                                               :id-path :a})
+        old-count (-> db :index deref count)
+        new-id (rand-int 99999999)
+        doc {:q "q" :a new-id :b "b movie" :c "sharp"}
+        doc-emission-str (doc-emitter doc)
+        new-db (sut/append db doc)]
+    (is (= doc-emission-str (ndio/last-line tmp-filename))
+        "Ensure that the last line of the database is now the new doc")
+    (is (= (inc old-count) (-> new-db :index deref count))
+        "Ensure that the new line is inserted into the database")
+    (is (= (select-keys doc [:a :b :c]) (nddb/q new-db new-id))
+        "Query new doc from new database index")
+    (io/delete-file (ndio/serialized-db-filepath new-db))
     (io/delete-file "resources/test/tmp-test.csv")))
