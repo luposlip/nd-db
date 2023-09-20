@@ -200,4 +200,15 @@
     (is (= (select-keys doc [:a :b :c]) (nddb/q new-db new-id))
         "Query new doc from new database index")
     (io/delete-file (ndio/serialized-db-filepath new-db))
+    (let [db (nddb/db {:filename tmp-filename
+                       :col-separator ","
+                       :id-path :a})]
+      (with-open [r (ndix/reader db)]
+        (is (= #{{:a 1 :b 2 :c "a"}
+                 {:a 3 :b "b" :c 4}
+                 {:a "c" :b 5 :c 6}
+                 {:a new-id :b "b movie" :c "sharp"}}
+               (set (nddb/q db (nddb/lazy-ids db))))
+            "Check that all docs, old and new, can be correctly read from db"))
+      (io/delete-file (ndio/serialized-db-filepath db)))
     (io/delete-file "resources/test/tmp-test.csv")))

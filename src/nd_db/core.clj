@@ -128,8 +128,9 @@
      (lazy-docs-eager-idx db (lazy-seq @(:index db)))))
   ([a b]
    {:pre [(every? (some-fn map? (partial instance? BufferedReader)) [a b])]}
-   (let [[db] (filter map? [a b])
-         [reader] (filter (partial instance? BufferedReader) [a b])]
+   (let [both [a b]
+         [db] (filter map? both)
+         [reader] (filter (partial instance? BufferedReader) both)]
      (lazy-docs-lazy-idx ndio/str->
                          (io/file (:filename db))
                          reader))))
