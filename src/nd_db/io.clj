@@ -36,10 +36,8 @@
 (defn ndfile-md5
   "Reads first and last line of file, return corresponding MD5"
   [filename]
-  (let [the-last (last-line filename)
-        size (.size (io/file filename))]
-    (with-open [r (io/reader filename)]
-      (digest/md5 (str/join [(first (line-seq r)) the-last size])))))
+  (with-open [r (io/reader filename)]
+    (-> r line-seq first digest/md5)))
 
 (defn ->str ^String [data]
   (nippy/freeze-to-string data))
@@ -62,11 +60,10 @@
     [(str/join File/separator (butlast parts)) (last parts)]))
 
 (defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder serialized-filename]}]
-  (let [db-md5 (ndfile-md5 filename)
-        [folder-path file-path] (path->folder+filename filename)
+  (let [[folder-path file-path] (path->folder+filename filename)
         nddbmeta-filename (or serialized-filename
                               (str (first (str/split file-path #"\."))
-                                   "_" db-md5
+                                   "_" (ndfile-md5 filename)
                                    idx-id
                                    ".nddbmeta"))]
     (str (or index-folder folder-path)

@@ -10,6 +10,9 @@
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
+(defn delete-meta [db]
+  (io/delete-file (ndio/serialized-db-filepath db)))
+
 (deftest query-single
   (testing ".ndjson file as random access database for single id"
     (is (= {:id 222
@@ -43,8 +46,7 @@
     (testing "Getting a database the first time (incl. serialization)"
       (is (ndut/db? (sut/db params))))
     (testing "Getting a database the second time (deserialization)"
-      ;;(is (ndut/db? (sut/db params)))
-      )))
+      (is (ndut/db? (sut/db params))))))
 
 (deftest query-raw-db
   (testing ".ndjson file as random access database for multiple ids"
@@ -153,14 +155,16 @@
     (with-open [r (ndix/reader db)]
       (let [ids (sut/lazy-ids r)]
         (is (= clojure.lang.LazySeq (type ids)))
-        (is (= 3 (count ids)))))))
+        (is (= 3 (count ids)))))
+    (delete-meta db)))
 
 (deftest query-csv
   (let [db (sut/db :filename "resources/test/test.csv"
                    :col-separator ","
                    :id-path :a)]
     (is (= {:a "c", :b 5, :c 6} (sut/q db "c")))
-    (is (= {:a 3, :b "b", :c 4} (sut/q db 3)))))
+    (is (= {:a 3, :b "b", :c 4} (sut/q db 3)))
+    (delete-meta db)))
 
 (deftest emit-doc
   (let [tmp-filename "resources/test/tmp-test.csv"
@@ -176,8 +180,9 @@
         doc-emission-str (doc-emitter doc)]
     (#'sut/emit-doc db doc-emission-str)
     (is (= (ndio/last-line tmp-filename) doc-emission-str))
-    (is (= (+ 2 old-count) (-> outf io/reader line-seq count)) "1 line for header, 1 new ")
-    (io/delete-file (ndio/serialized-db-filepath db))
+    (is (= (+ 3 old-count) (-> outf io/reader line-seq count))
+        "1 line for header, 1 revision of id=1, 1 new doc")
+    (delete-meta db)
     (io/delete-file tmp-filename)))
 
 (deftest append
@@ -199,18 +204,18 @@
         "Ensure that the new line is inserted into the database")
     (is (= (select-keys doc [:a :b :c]) (nddb/q new-db new-id))
         "Query new doc from new database index")
-    (io/delete-file (ndio/serialized-db-filepath new-db))
+    (delete-meta new-db)
     (let [db (nddb/db {:filename tmp-filename
                        :col-separator ","
                        :id-path :a})]
       (with-open [r (ndix/reader db)]
-        (is (= #{{:a 1 :b 2 :c "a"}
+        (is (= #{{:a 1 :b 7 :c "a"}
                  {:a 3 :b "b" :c 4}
                  {:a "c" :b 5 :c 6}
                  {:a new-id :b "b movie" :c "sharp"}}
                (set (nddb/q db (nddb/lazy-ids db))))
             "Check that all docs, old and new, can be correctly read from db"))
-      (io/delete-file (ndio/serialized-db-filepath db)))
+      (delete-meta db))
     (io/delete-file "resources/test/tmp-test.csv")))
 
 (deftest append-new-versions
@@ -219,12 +224,45 @@
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
         db (nddb/db {:filename tmp-filename
-                                               :col-separator ","
-                                               :id-path :a})
+                     :col-separator ","
+                     :id-path :a})
         doc {:a 1 :b "movie" :c "sharp"}
         new-db (sut/append db doc)]
-
-    (is (= {:a 1 :b 2 :c "a"} (nddb/q db 1)) "Old db returns old doc")
+    (-> new-db :index deref)
+    (is (= {:a 1 :b 7 :c "a"} (nddb/q db 1)) "Old db returns old doc")
     (is (= doc (nddb/q new-db 1)) "New db returns new version")
-    (io/delete-file (ndio/serialized-db-filepath db))
+    (delete-meta db)
     (io/delete-file "resources/test/tmp-test.csv")))
+
+(deftest append-new-version-of-last-doc
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (nddb/db {:filename tmp-filename
+                     :col-separator ","
+                     :id-path :a})
+        doc {:a "c" :b 8 :c 9}
+        new-db (sut/append db doc)]
+    (-> new-db :index deref)
+    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
+    (is (= doc (nddb/q new-db "c")) "New db returns new version")
+    (delete-meta db)
+    (io/delete-file "resources/test/tmp-test.csv")))
+
+(deftest query-historical-db
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (nddb/db {:filename tmp-filename
+                     :col-separator ","
+                     :id-path :a})
+        doc {:a "c" :b 8 :c 9}
+        new-db (sut/append db doc)]
+    (-> new-db :index deref)
+    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
+    (is (= doc (nddb/q new-db "c")) "New db returns new version")
+    (delete-meta db)
+    (io/delete-file "resources/test/tmp-test.csv"))
+  )
