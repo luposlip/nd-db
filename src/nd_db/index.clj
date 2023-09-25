@@ -123,3 +123,26 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
       (#'ndio/write-nippy-ln w [doc-id idx-vec])
       (.flush w))
     (update db :index #(delay (assoc (deref %) doc-id idx-vec)))))
+
+(defn re-index
+  "Re-index the database, with a limit on the log size.
+  Ie. :log-limit set to 2 means only the 2 first lines of the database are
+  considered. If a newer version of one of the docs were added later, they are
+  not taken into account."
+  [log-limit db]
+  {:pre [((some-fn nil? number?) log-limit)
+         (ndut/db? db)]}
+  (if log-limit
+    (assoc db
+           :index
+           (delay
+             (with-open [r (reader db)]
+               (reduce
+                (fn [a i]
+                  (let [[id off-length] (ndio/str-> i)]
+                    (assoc a id off-length)))
+                {}
+                (->> r
+                     line-seq
+                     (take log-limit))))))
+    db))

@@ -85,7 +85,8 @@
      (write-nippy-ln w (dissoc db-info
                                :index :as-of
                                :id-fn :col-parser :doc-parser :doc-emitter
-                               :index-persist?))
+                               :index-persist?
+                               :log-limit))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
          (write-nippy-ln w (vec i)))
@@ -107,13 +108,14 @@
     :csv (ndcs/csv-row->data params)
     :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
-(defn params->doc-emitter [{:keys [doc-type] :as params}]
-  (case doc-type
-    :json json/encode
-    :edn str
-    :nippy ndio/->str
-    :csv (ndcs/data->csv-row params)
-    :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+(defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
+  (when-not log-limit
+    (case doc-type
+      :json json/encode
+      :edn str
+      :nippy ndio/->str
+      :csv (ndcs/data->csv-row params)
+      :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
 
 (defn- ^{:deprecated "v0.9.0"} _parse-db
   "Parse nd-db metadata format pre v0.9.0"
@@ -126,15 +128,20 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename] :as params} serialized-filename]
+  [{:keys [filename log-limit] :as params} serialized-filename]
   (try
     (with-open [r (io/reader ^String serialized-filename)]
       (let [[meta] (line-seq r)]
         (-> meta
             str->
             (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
-                                   (->> (line-seq r2)
+                                   (->> r2
+                                        line-seq
                                         rest
+                                        (#(if (and (number? log-limit)
+                                                   (pos? log-limit))
+                                            (take log-limit %)
+                                            %))
                                         (map str->)
                                         (into {}))))
                    :doc-parser (params->doc-parser params)
@@ -172,7 +179,8 @@
              id-path
              id-name id-type
              col-separator col-parser ;; CSV
-             index-folder index-persist?] :as params}]
+             index-folder index-persist?
+             log-limit] :as params}]
   {:pre [(string? filename)
          (or (fn? id-fn)
              (string? id-rx-str)
@@ -185,7 +193,7 @@
                 (:idx-id %)
                 (:doc-type %)
                 (:doc-parser %)
-                (:doc-emitter %))]}
+                ((some-fn ifn? nil?) (:doc-emitter %)))]}
   (let [doc-type (infer-doctype filename)]
     (when (and id-path (and (not col-separator)
                             (not= :nippy doc-type)))
@@ -207,6 +215,7 @@
                          :doc-type doc-type
                          :filename filename
                          :index-persist? (not (false? index-persist?)))
+                   (number? log-limit) (assoc :log-limit log-limit)
                    (= :csv doc-type)
                    (assoc :col-separator col-separator
                           :id-path id-path

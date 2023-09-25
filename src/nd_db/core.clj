@@ -26,10 +26,10 @@
     (if (.isFile ^File (io/file serialized-filepath))
       (ndio/parse-db params serialized-filepath)
       (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)]
-        (-> params
-            (assoc :serialized-filename serialized-filename)
-            raw-db
-            ndio/serialize-db)))))
+        (->> (assoc params :serialized-filename serialized-filename)
+             raw-db
+             ndio/serialize-db
+             (ndix/re-index (:log-limit params)))))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -53,7 +53,8 @@
   :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
                     inhibit the use of previously persisted indices!
   :filename       - .ndnippy input filename (full path)
-  :index-path     - Use with .ndnippy file, docs can be index directly by path vector"
+  :index-path     - Use with .ndnippy file, docs can be index directly by path vector
+  :log-limit      - Read the documents log until and including this index (for versioning)"
   [& _params]
   {:post [(ndut/db? %)]}
   (let [{:keys [index-persist?] :as params} (apply ndio/parse-params _params)]
@@ -171,7 +172,10 @@ meaning DON'T do parallel writes to database..!"
     (.flush w))
   db)
 
-(defn append [{:keys [doc-emitter] :as db} doc]
+(defn append [{:keys [doc-emitter log-limit] :as db} doc]
+  (when (or (nil? doc-emitter)
+            log-limit)
+    (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
   (let [doc-emission-str (doc-emitter doc)]
     (-> db
         (emit-doc doc-emission-str)

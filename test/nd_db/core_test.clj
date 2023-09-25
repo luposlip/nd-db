@@ -255,14 +255,67 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        db (nddb/db {:filename tmp-filename
+        old-db (nddb/db {:filename tmp-filename
+                         :col-separator ","
+                         :id-path :a
+                         :log-limit 2})
+        _ (-> old-db :index deref)
+        current-db (nddb/db {:filename tmp-filename
+                             :col-separator ","
+                             :id-path :a})
+        _ (-> current-db :index deref)
+        current-doc {:a "c" :b 5 :c 6}
+        new-doc {:a "c" :b 8 :c 9}
+        new-db (sut/append current-db new-doc)]
+
+    (is (thrown? clojure.lang.ExceptionInfo (sut/append old-db new-doc))
+        "Can't append to historical db version")
+
+    (testing "Old database"
+      ;; The test below won't work until historical versions have been
+      ;; properly implemented! Right now index is persisted based on final map
+      ;; of ids to offset/length pairs.. It should be written per document! So
+      ;; that's a somewhat big refactoring..
+      ;; TODO: Enable: (is (= 2 (-> old-db (nddb/q 1) :b)) "This is the oldest version of doc w/id=1")
+      (is (= nil (nddb/q old-db "c"))
+          "Old db doesn't know about doc with id=c"))
+
+    (testing "Current database"
+      (is (= 7 (-> current-db (nddb/q 1) :b))
+          "This is the newest version of doc w/id=1")
+      (is (= current-doc (nddb/q current-db "c"))
+          "Current db returns current c doc"))
+
+    (is (= new-doc (nddb/q new-db "c")) "New db returns new c doc")
+
+    (delete-meta new-db)
+    (io/delete-file "resources/test/tmp-test.csv")))
+
+;; TODO: The snippet below should show all lines of the index for all
+;; lines in the database, not just the newest lines per doc!
+;;
+;; The serialization of the index come from a map which is not ordered..
+;; It should come from the input file instead..
+;; This means the index should be written line by line, when building the
+;; index in the first place, instead of written when the entire index is
+;; realized (so writing the index is lazy as well as the reading).
+;;
+;; Actually: Perhaps have a index log, and a shortened index!? Because
+;; otherwise we can't lazily read the unique ID's of the database via the
+;; index! :(
+;; So:
+;; 1: index-log (representing _all_ lines in the document log), and
+;; 2: index (could be read from the end of the index!!!, building up an
+;;    index of IDs to offset/length, ignoring ID's that have already been
+;;    added to the index - which is exactly the opposite as what we have
+;;    today.!
+#_(let [db (nddb/db {:filename "resources/test/test.csv"
                      :col-separator ","
-                     :id-path :a})
-        doc {:a "c" :b 8 :c 9}
-        new-db (sut/append db doc)]
-    (-> new-db :index deref)
-    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
-    (is (= doc (nddb/q new-db "c")) "New db returns new version")
-    (delete-meta db)
-    (io/delete-file "resources/test/tmp-test.csv"))
-  )
+                     :id-path :a
+                     :log-limit 2})]
+    ;;(-> db :index deref)
+    ;;(nddb/q db 1)
+    (with-open [r (-> db ndio/serialized-db-filepath io/reader)]
+      (->> r line-seq
+           rest
+           (mapv ndio/str->))))
