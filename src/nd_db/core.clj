@@ -4,7 +4,8 @@
              [io :as ndio]
              [index :as ndix]
              [util :as ndut]]
-            [nd-db.core :as nddb])
+            [nd-db.core :as nddb]
+            [clojure.string :as str])
   (:import [java.io File RandomAccessFile BufferedReader]))
 
 (defn- raw-db
@@ -160,8 +161,8 @@
 
     :else (throw (ex-info "Pass either db or index-reader!" {:param-type (type i)}))))
 
-(defn- emit-doc [db ^String doc-emission-str]
-  "Emit a serialized document to a database.
+(defn- emit-docs [db ^String doc-emission-str]
+  "Emit a serialized document(s) to a database.
 NOT thread safe, only use this from a single thread,
 meaning DON'T do parallel writes to database..!"
   {:pre [(ndut/db? db)
@@ -172,11 +173,15 @@ meaning DON'T do parallel writes to database..!"
     (.flush w))
   db)
 
-(defn append [{:keys [doc-emitter log-limit] :as db} doc]
+(defn append [{:keys [doc-emitter log-limit] :as db} doc-or-docs]
+  {:pre [((some-fn map? sequential?) doc-or-docs)]}
   (when (or (nil? doc-emitter)
             log-limit)
     (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
-  (let [doc-emission-str (doc-emitter doc)]
+  (let [docs (if (map? doc-or-docs)
+               [doc-or-docs]
+               doc-or-docs)
+        docs-stringed (map doc-emitter docs)]
     (-> db
-        (emit-doc doc-emission-str)
-        (ndix/append doc doc-emission-str))))
+        (emit-docs (->> docs-stringed (str/join "\n") ))
+        (ndix/append docs docs-stringed))))

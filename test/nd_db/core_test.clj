@@ -178,7 +178,7 @@
         new-id (rand-int 99999999)
         doc {:q "q" :a new-id :b "b movie" :c "sharp"}
         doc-emission-str (doc-emitter doc)]
-    (#'sut/emit-doc db doc-emission-str)
+    (#'sut/emit-docs db doc-emission-str)
     (is (= (ndio/last-line tmp-filename) doc-emission-str))
     (is (= (+ 3 old-count) (-> outf io/reader line-seq count))
         "1 line for header, 1 revision of id=1, 1 new doc")
@@ -249,6 +249,24 @@
     (is (= doc (nddb/q new-db "c")) "New db returns new version")
     (delete-meta db)
     (io/delete-file "resources/test/tmp-test.csv")))
+
+(deftest append-new-versions
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (nddb/db {:filename tmp-filename
+                     :col-separator ","
+                     :id-path :a})
+        newest-doc {:a "c" :b 12 :c 13}
+        docs [{:a "c" :b 8 :c 9} {:a "c" :b 10 :c 11} newest-doc]
+        new-db (sut/append db docs)]
+    (-> new-db :index deref)
+    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
+    (is (= newest-doc (nddb/q new-db "c")) "New db returns newest version")
+    ;;(delete-meta db)
+    ;;(io/delete-file "resources/test/tmp-test.csv")
+    ))
 
 (deftest query-historical-db
   (let [tmp-filename "resources/test/tmp-test.csv"

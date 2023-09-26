@@ -104,25 +104,37 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
 
 (defn append
   "Appends a doc to the index, returns the updated database value."
-  [{:keys [id-fn id-path] :as db} doc doc-emission-str]
+  [{:keys [id-fn id-path] :as db} docs doc-emission-strs]
   {:pre [(ndut/db? db)
          (or (ifn? id-fn)
              ((some-fn keyword? vector?) id-path))
-         (map? doc)]
+         (and (sequential? docs)
+              (every? map? docs))]
    :post [(ndut/db? %)]}
-  (let [doc-id ((or id-fn #(if (keyword? id-path)
-                             (id-path %)
-                             (get-in % id-path))) doc)
-        serialized-filename (ndio/serialized-db-filepath db)
+  (let [serialized-filename (ndio/serialized-db-filepath db)
+        doc-id-fn (or id-fn #(if (keyword? id-path)
+                               (id-path %)
+                               (get-in % id-path)))
+        doc-ids (map doc-id-fn docs)
         [_ [offset length]] (-> serialized-filename
                                 ndio/last-line
-                                ndio/str->)
-        idx-vec [(inc (+ offset length)) (count doc-emission-str)]]
+                                ndio/str->)]
 
     (with-open [w (append-writer db serialized-filename)]
-      (#'ndio/write-nippy-ln w [doc-id idx-vec])
-      (.flush w))
-    (update db :index #(delay (assoc (deref %) doc-id idx-vec)))))
+      (let [index-data (mapv (fn [doc-id doc-emission-str]
+                              (let [idx-vec [(inc (+ offset length)) (count doc-emission-str)]][]
+                                   (#'ndio/write-nippy-ln w [doc-id idx-vec])
+                                   [doc-id idx-vec]))
+                            doc-ids doc-emission-strs)]
+        (.flush w)
+        (update db :index
+                (fn [idx]
+                  (delay
+                    (reduce
+                     (fn [a [doc-id idx-vec]]
+                       (assoc a doc-id idx-vec))
+                     (deref idx)
+                     index-data))))))))
 
 (defn re-index
   "Re-index the database, with a limit on the log size.
