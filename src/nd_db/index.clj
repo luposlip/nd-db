@@ -108,13 +108,19 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
   {:pre [(ndut/db? db)
          (or (ifn? id-fn)
              ((some-fn keyword? vector?) id-path))
-         (and (sequential? docs)
-              (every? map? docs))]
+         (or (map? docs)
+             (and (sequential? docs)
+                  (every? map? docs)))
+         (or (string? doc-emission-strs)
+             (and (sequential? doc-emission-strs)
+                  (every? string? doc-emission-strs)))]
    :post [(ndut/db? %)]}
   (let [serialized-filename (ndio/serialized-db-filepath db)
         doc-id-fn (or id-fn #(if (keyword? id-path)
                                (id-path %)
                                (get-in % id-path)))
+        docs (if (map? docs) [docs] docs)
+        doc-emission-strs (if (string? doc-emission-strs) [doc-emission-strs] doc-emission-strs)
         doc-ids (map doc-id-fn docs)
         [_ [offset length]] (-> serialized-filename
                                 ndio/last-line
