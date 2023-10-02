@@ -261,12 +261,12 @@
         newest-doc {:a "c" :b 12 :c 13}
         docs [{:a "c" :b 8 :c 9} {:a "c" :b 10 :c 11} newest-doc]
         new-db (sut/append db docs)]
+    (-> db :index deref)
     (-> new-db :index deref)
     (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
     (is (= newest-doc (nddb/q new-db "c")) "New db returns newest version")
-    ;;(delete-meta db)
-    ;;(io/delete-file "resources/test/tmp-test.csv")
-    ))
+    (delete-meta db)
+    (io/delete-file "resources/test/tmp-test.csv")))
 
 (deftest query-historical-db
   (let [tmp-filename "resources/test/tmp-test.csv"

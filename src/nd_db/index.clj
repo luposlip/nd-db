@@ -121,11 +121,18 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
                                 ndio/str->)]
 
     (with-open [w (append-writer db serialized-filename)]
-      (let [index-data (mapv (fn [doc-id doc-emission-str]
-                              (let [idx-vec [(inc (+ offset length)) (count doc-emission-str)]][]
-                                   (#'ndio/write-nippy-ln w [doc-id idx-vec])
-                                   [doc-id idx-vec]))
-                            doc-ids doc-emission-strs)]
+      (let [index-data (loop [this-offset (+ offset length 1)
+                              des doc-emission-strs
+                              ids doc-ids
+                              aggr []]
+                         (if (empty? ids)
+                           aggr
+                           (let [doc-str-count (-> des first count)
+                                 next-offset (+ this-offset doc-str-count 1)]
+                             (recur next-offset (rest des) (rest ids)
+                                    (conj aggr [(first ids) [this-offset doc-str-count]])))))]
+        (doseq [ivec index-data]
+          (#'ndio/write-nippy-ln w ivec))
         (.flush w)
         (update db :index
                 (fn [idx]

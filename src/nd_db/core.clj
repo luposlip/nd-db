@@ -183,5 +183,5 @@ meaning DON'T do parallel writes to database..!"
                doc-or-docs)
         docs-stringed (map doc-emitter docs)]
     (-> db
-        (emit-docs (->> docs-stringed (str/join "\n") ))
+        (emit-docs (->> docs-stringed (str/join "\n")))
         (ndix/append docs docs-stringed))))
