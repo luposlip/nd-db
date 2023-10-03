@@ -13,6 +13,10 @@
 (defn delete-meta [db]
   (io/delete-file (ndio/serialized-db-filepath db)))
 
+(defn db-index-line-count [db]
+  (with-open [r (io/reader (ndio/serialized-db-filepath db))]
+    (-> r line-seq count)))
+
 (deftest query-single
   (testing ".ndjson file as random access database for single id"
     (is (= {:id 222
@@ -276,11 +280,14 @@
         db (nddb/db :filename tmp-filename
                     :id-path :id)
         _ (-> db :index deref)
-        doc {:id 1 :b "c" :d "e"}
-        new-db (sut/append db doc)]
+        pre-idx-lines (db-index-line-count db)
+        docs [{:id 1 :b "c" :d "e"} {:id 123 :data [:x {:y "z"}] :q :p} {:id 222 :new "data"}]
+        new-db (sut/append db docs)]
     (-> new-db :index deref)
-    (is (not= doc (nddb/q db 1)) "Old db returns old doc")
-    (is (= doc (nddb/q new-db 1)) "New db returns new version")
+    (is (= (+ pre-idx-lines (count docs)) (db-index-line-count new-db))
+        "New index line count is old line count plus docs appended")
+    (is (not= (first docs) (nddb/q db 1)) "Old db returns old doc")
+    (is (= (first docs) (nddb/q new-db 1)) "New db returns new version")
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
