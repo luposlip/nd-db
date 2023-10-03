@@ -180,8 +180,13 @@ meaning DON'T do parallel writes to database..!"
     (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
   (let [docs (if (map? doc-or-docs)
                [doc-or-docs]
-               doc-or-docs)
-        docs-stringed (map doc-emitter docs)]
-    (-> db
-        (emit-docs (->> docs-stringed (str/join "\n")))
-        (ndix/append docs docs-stringed))))
+               doc-or-docs)]
+    (loop [all-docs-part (partition-all 128 docs)
+           aggr-db db]
+      (if (empty? all-docs-part)
+        aggr-db
+        (let [docs-part-stringed (map doc-emitter (first all-docs-part))]
+          (recur (rest all-docs-part)
+                 (-> aggr-db
+                     (emit-docs (->> docs-part-stringed (str/join "\n")))
+                     (ndix/append docs docs-part-stringed))))))))

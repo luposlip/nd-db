@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
-## [0.9.0-beta6] - 2023-09-20
+## [0.9.0-beta6+7] - 2023-10-03
 
 - Append documents to existing nd-db files (previously v1.0.0)
 g- Optional end-pointer parameter for versioning
@@ -20,6 +20,8 @@ g- Optional end-pointer parameter for versioning
    - look for `nddbmeta` using same line (name of index reflecting lines)
    - if `nddbmeta` doesn't exist, stop indexing after passed line number
    - this will create a new `.nddbmeta` file with a hash and metadata reflecting
+
+Multiple documents are automatically written to db (and index) in batches of 128.
 
 ## [0.9.0-beta5] - 2023-04-20
 
