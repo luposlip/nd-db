@@ -3,11 +3,29 @@ All notable changes to this project will be documented in this file. This change
 
 ## [Unreleased]
 
-### TODO
+- Historical document versions
+- Timestamps for historical versions
+- Optimize (speed+size of) low level index format
+
+## [0.9.0-beta6+7] - 2023-10-03
+
+- Append documents to existing nd-db files (previously v1.0.0)
+g- Optional end-pointer parameter for versioning
+ - no parameter:
+   - use everything in the file, including new doc versions
+   - added docs will update index (thus prevent getting new db value until done)
+   - the index will contain only the newest version of each document
+   - a future version of `nd-db` might contain historical versions
+ - parameter:
+   - look for `nddbmeta` using same line (name of index reflecting lines)
+   - if `nddbmeta` doesn't exist, stop indexing after passed line number
+   - this will create a new `.nddbmeta` file with a hash and metadata reflecting
+
+Multiple documents are automatically written to db (and index) in batches of 128.
 
 ## [0.9.0-beta5] - 2023-04-20
 
-Add convenience compression functions
+Minor refactoring
 
 ## [0.9.0-beta3+4] - 2023-03-23+27
 

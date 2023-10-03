@@ -46,3 +46,6 @@
   (is (= :csv (#'sut/infer-doctype "/some/path/to/a.csv")))
   (is (= :nippy (#'sut/infer-doctype "/some/path/to/a.ndnippy")))
   (is (= :unknown (#'sut/infer-doctype "/some/path/to/a.zip"))))
+
+(deftest last-line
+  (is (= "c,5,6" (sut/last-line "resources/test/test.csv"))))

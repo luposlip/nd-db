@@ -5,7 +5,9 @@
              [util :as ndut]
              [io :as ndio]])
   (:import [java.time Instant]
-           [java.io BufferedReader FileReader]))
+           [java.io
+            BufferedReader FileReader
+            BufferedWriter]))
 
 (defn index-id
   "This function generates a pseudo unique index ID for the combination
@@ -88,3 +90,84 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta! (or delete it,
   (let [r (BufferedReader. (FileReader. ^String (ndio/serialized-db-filepath db)))]
     (.readLine r) ;; first line isn't part of the index
     r))
+
+(defn- ^BufferedWriter append-writer
+  [db & [serialized-filename]]
+  {:pre [(ndut/db? db)
+         ((some-fn nil? string?) serialized-filename)]}
+  (when-not (ndut/v090+? db)
+    (throw (ex-info "Pre v0.9.0 .nddbmeta format - cannot append to index.
+Consider converting the index via nd-db.convert/upgrade-nddbmeta!
+(or delete it, which will recreate it automatically)."
+                    db)))
+  (ndio/append-writer (or serialized-filename (ndio/serialized-db-filepath db))))
+
+(defn append
+  "Appends a doc to the index, returns the updated database value."
+  [{:keys [id-fn id-path] :as db} docs doc-emission-strs]
+  {:pre [(ndut/db? db)
+         (or (ifn? id-fn)
+             ((some-fn keyword? vector?) id-path))
+         (or (map? docs)
+             (and (sequential? docs)
+                  (every? map? docs)))
+         (or (string? doc-emission-strs)
+             (and (sequential? doc-emission-strs)
+                  (every? string? doc-emission-strs)))]
+   :post [(ndut/db? %)]}
+  (let [serialized-filename (ndio/serialized-db-filepath db)
+        doc-id-fn (or id-fn #(if (keyword? id-path)
+                               (id-path %)
+                               (get-in % id-path)))
+        docs (if (map? docs) [docs] docs)
+        doc-emission-strs (if (string? doc-emission-strs) [doc-emission-strs] doc-emission-strs)
+        doc-ids (map doc-id-fn docs)
+        [_ [offset length]] (-> serialized-filename
+                                ndio/last-line
+                                ndio/str->)]
+
+    (with-open [w (append-writer db serialized-filename)]
+      (let [index-data (loop [this-offset (+ offset length 1)
+                              des doc-emission-strs
+                              ids doc-ids
+                              aggr []]
+                         (if (empty? ids)
+                           aggr
+                           (let [doc-str-count (-> des first count)
+                                 next-offset (+ this-offset doc-str-count 1)]
+                             (recur next-offset (rest des) (rest ids)
+                                    (conj aggr [(first ids) [this-offset doc-str-count]])))))]
+        (doseq [ivec index-data]
+          (#'ndio/write-nippy-ln w ivec))
+        (.flush w)
+        (update db :index
+                (fn [idx]
+                  (delay
+                    (reduce
+                     (fn [a [doc-id idx-vec]]
+                       (assoc a doc-id idx-vec))
+                     (deref idx)
+                     index-data))))))))
+
+(defn re-index
+  "Re-index the database, with a limit on the log size.
+  Ie. :log-limit set to 2 means only the 2 first lines of the database are
+  considered. If a newer version of one of the docs were added later, they are
+  not taken into account."
+  [log-limit db]
+  {:pre [((some-fn nil? number?) log-limit)
+         (ndut/db? db)]}
+  (if log-limit
+    (assoc db
+           :index
+           (delay
+             (with-open [r (reader db)]
+               (reduce
+                (fn [a i]
+                  (let [[id off-length] (ndio/str-> i)]
+                    (assoc a id off-length)))
+                {}
+                (->> r
+                     line-seq
+                     (take log-limit))))))
+    db))

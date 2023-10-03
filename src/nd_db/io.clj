@@ -1,6 +1,6 @@
 (ns nd-db.io
   (:require [clojure
-             [string :as s]
+             [string :as str]
              [edn :as edn]]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
@@ -12,17 +12,32 @@
              [io :as ndio]
              [id-fns :as ndid]
              [csv :as ndcs]])
-  (:import [java.io File Writer BufferedWriter]))
+  (:import [java.io File Writer FileWriter BufferedWriter
+            RandomAccessFile]))
 
 (defn tmpdir []
   (System/getProperty "java.io.tmpdir"))
 
+(defn last-line [filename]
+  (let [file (io/file filename)
+        radfile (RandomAccessFile. file "r")
+        newline (byte \newline)]
+    (loop [pointer (dec (.length file))
+           bytes []
+           first true]
+      (let [byte (do (.seek radfile pointer) (.read radfile))]
+        (if (and (false? first) (= newline byte) (< 0 (count bytes)))
+          (->> bytes reverse (map char) (apply str))
+          (recur (dec pointer) (if (true? first)
+                                 bytes
+                                 (conj bytes byte))
+                 false))))))
+
 (defn ndfile-md5
-  "Reads first 10 lines of file, return corresponding MD5"
+  "Reads first and last line of file, return corresponding MD5"
   [filename]
   (with-open [r (io/reader filename)]
-    (let [input (take 10 (line-seq r))]
-      (digest/md5 (s/join input)))))
+    (-> r line-seq first digest/md5)))
 
 (defn ->str ^String [data]
   (nippy/freeze-to-string data))
@@ -41,15 +56,14 @@
   "Splits filename into path/folder and filename"
   [filepath]
   (let [ptrn (re-pattern File/separator)
-        parts (s/split filepath ptrn)]
-    [(s/join File/separator (butlast parts)) (last parts)]))
+        parts (str/split filepath ptrn)]
+    [(str/join File/separator (butlast parts)) (last parts)]))
 
 (defn serialized-db-filepath ^String [& {:keys [filename idx-id index-folder serialized-filename]}]
-  (let [db-md5 (ndfile-md5 filename)
-        [folder-path file-path] (path->folder+filename filename)
+  (let [[folder-path file-path] (path->folder+filename filename)
         nddbmeta-filename (or serialized-filename
-                              (str (first (s/split file-path #"\."))
-                                   "_" db-md5
+                              (str (first (str/split file-path #"\."))
+                                   "_" (ndfile-md5 filename)
                                    idx-id
                                    ".nddbmeta"))]
     (str (or index-folder folder-path)
@@ -70,8 +84,9 @@
      ;; writing to EDN string takes ~5x longer than using nippy+b64
      (write-nippy-ln w (dissoc db-info
                                :index :as-of
-                               :id-fn :col-parser :doc-parser
-                               :index-persist?))
+                               :id-fn :col-parser :doc-parser :doc-emitter
+                               :index-persist?
+                               :log-limit))
      (doseq [part (partition-all 1000 (seq index))]
        (doseq [i part]
          (write-nippy-ln w (vec i)))
@@ -93,6 +108,15 @@
     :csv (ndcs/csv-row->data params)
     :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
+(defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
+  (when-not log-limit
+    (case doc-type
+      :json json/encode
+      :edn str
+      :nippy ndio/->str
+      :csv (ndcs/data->csv-row params)
+      :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
+
 (defn- ^{:deprecated "v0.9.0"} _parse-db
   "Parse nd-db metadata format pre v0.9.0"
   [{:keys [filename]} serialized-filename]
@@ -104,27 +128,33 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename] :as params} serialized-filename]
+  [{:keys [filename log-limit] :as params} serialized-filename]
   (try
     (with-open [r (io/reader ^String serialized-filename)]
       (let [[meta] (line-seq r)]
         (-> meta
             str->
             (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
-                                   (->> (line-seq r2)
+                                   (->> r2
+                                        line-seq
                                         rest
+                                        (#(if (and (number? log-limit)
+                                                   (pos? log-limit))
+                                            (take log-limit %)
+                                            %))
                                         (map str->)
                                         (into {}))))
-                   :doc-parser (params->doc-parser params))
+                   :doc-parser (params->doc-parser params)
+                   :doc-emitter (params->doc-emitter params))
             (maybe-update-filename filename))))
     (catch Exception e
-      (when (or (-> e ex-message (s/includes? "String.getBytes"))
-                (s/includes? (ex-message e) "base64"))
+      (when (or (-> e ex-message (str/includes? "String.getBytes"))
+                (str/includes? (ex-message e) "base64"))
         ;; fallback to pre v0.9.0 metadata standard
         (_parse-db params serialized-filename)))))
 
 (defn append+newline
-  "append to a file, return count of bytes appended"
+  "Append to a ndnippy file, return count of bytes appended"
   [^Writer writer]
   (fn [data]
     (let [data-str (str (->str data) "\n")]
@@ -134,7 +164,7 @@
       (count data-str))))
 
 (defn- infer-doctype [filename]
-  (condp = (last (s/split filename #"\."))
+  (condp = (last (str/split filename #"\."))
     "ndnippy" :nippy
     "ndjson" :json
     "ndedn" :edn
@@ -149,7 +179,8 @@
              id-path
              id-name id-type
              col-separator col-parser ;; CSV
-             index-folder index-persist?] :as params}]
+             index-folder index-persist?
+             log-limit] :as params}]
   {:pre [(string? filename)
          (or (fn? id-fn)
              (string? id-rx-str)
@@ -161,7 +192,8 @@
                 (:id-fn %)
                 (:idx-id %)
                 (:doc-type %)
-                (:doc-parser %))]}
+                (:doc-parser %)
+                ((some-fn ifn? nil?) (:doc-emitter %)))]}
   (let [doc-type (infer-doctype filename)]
     (when (and id-path (and (not col-separator)
                             (not= :nippy doc-type)))
@@ -183,14 +215,27 @@
                          :doc-type doc-type
                          :filename filename
                          :index-persist? (not (false? index-persist?)))
+                   (number? log-limit) (assoc :log-limit log-limit)
+                   (or (keyword? id-path)
+                       (vector? id-path)) (assoc :id-path id-path)
                    (= :csv doc-type)
                    (assoc :col-separator col-separator
-                          :id-path id-path
                           :cols (with-open [r (io/reader filename)]
                                   (ndcs/col-str->key-vec
                                    (re-pattern col-separator)
                                    (first (line-seq r))))))]
-      (with-meta (assoc parsed :doc-parser (params->doc-parser parsed)) {:parsed? true}))))
+      (with-meta (-> parsed
+                     (assoc :doc-parser (params->doc-parser parsed))
+                     (assoc :doc-emitter (params->doc-emitter parsed)))
+        {:parsed? true}))))
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))
+
+(defn ^BufferedWriter append-writer
+  "Return af BufferedWriter for the database index.
+   Use in a with-open block or close explicitly."
+  [^String filename & _]
+  {:pre [(string? filename)]
+   :post [(instance? BufferedWriter %)]}
+  (BufferedWriter. (FileWriter. (io/file filename) true)))

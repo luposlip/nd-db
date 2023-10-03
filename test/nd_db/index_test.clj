@@ -3,7 +3,8 @@
             [clojure.test :refer :all]
             [nd-db
              [core :as nddb]
-             [index :as sut]]))
+             [index :as sut]]
+            [nd-db.util :as ndut]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -35,3 +36,17 @@
                     :id-path :id)]
     (with-open [r (sut/reader db)]
       (is (= 3 (count (line-seq r)))))))
+
+(deftest append
+  (let [{:keys [doc-emitter] :as db} (nddb/db :filename "resources/test/test.csv"
+                                              :col-separator ","
+                                              :id-path :a)
+        _ (-> db :index deref) ;; pre-heat: make sure to realize the index
+                               ;; before adding the next entry
+        new-id (rand-int 999999999)
+        doc {:a new-id :b 8888 :c 7777}
+        doc-emission-str (doc-emitter doc)
+        new-db (sut/append db doc doc-emission-str)
+        new-index-keys (-> new-db :index deref keys set)]
+    (is (ndut/db? new-db))
+    (is (= new-id (new-index-keys new-id)))))
