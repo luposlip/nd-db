@@ -48,13 +48,13 @@
   :id-name        - Convenience parameter - if you just want to supply the name of the ID in the text
                     based data to search for - creates a regex under the hood. Should be used with
                     the next parameter for optimal speed.
+  :id-path        - Use with nippy databases. Docs can be indexed directly by path vector
   :id-type        - The type of data to store as ID (key) in the index
   :source-type    - If the source-type is different from the ID type to store in the index
   :index-folder   - Folder to persist index in, defaults to system temp folder
   :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
                     inhibit the use of previously persisted indices!
   :filename       - .ndnippy input filename (full path)
-  :index-path     - Use with .ndnippy file, docs can be index directly by path vector
   :log-limit      - Read the documents log until and including this index (for versioning)"
   [& _params]
   {:post [(ndut/db? %)]}

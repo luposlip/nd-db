@@ -216,9 +216,10 @@
                          :filename filename
                          :index-persist? (not (false? index-persist?)))
                    (number? log-limit) (assoc :log-limit log-limit)
+                   (or (keyword? id-path)
+                       (vector? id-path)) (assoc :id-path id-path)
                    (= :csv doc-type)
                    (assoc :col-separator col-separator
-                          :id-path id-path
                           :cols (with-open [r (io/reader filename)]
                                   (ndcs/col-str->key-vec
                                    (re-pattern col-separator)

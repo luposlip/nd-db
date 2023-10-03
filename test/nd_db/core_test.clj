@@ -216,7 +216,7 @@
                (set (nddb/q db (nddb/lazy-ids db))))
             "Check that all docs, old and new, can be correctly read from db"))
       (delete-meta db))
-    (io/delete-file "resources/test/tmp-test.csv")))
+    (io/delete-file tmp-filename)))
 
 (deftest append-new-versions
   (let [tmp-filename "resources/test/tmp-test.csv"
@@ -232,7 +232,7 @@
     (is (= {:a 1 :b 7 :c "a"} (nddb/q db 1)) "Old db returns old doc")
     (is (= doc (nddb/q new-db 1)) "New db returns new version")
     (delete-meta db)
-    (io/delete-file "resources/test/tmp-test.csv")))
+    (io/delete-file tmp-filename)))
 
 (deftest append-new-version-of-last-doc
   (let [tmp-filename "resources/test/tmp-test.csv"
@@ -248,7 +248,7 @@
     (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
     (is (= doc (nddb/q new-db "c")) "New db returns new version")
     (delete-meta db)
-    (io/delete-file "resources/test/tmp-test.csv")))
+    (io/delete-file tmp-filename)))
 
 (deftest append-new-versions
   (let [tmp-filename "resources/test/tmp-test.csv"
@@ -266,7 +266,23 @@
     (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
     (is (= newest-doc (nddb/q new-db "c")) "New db returns newest version")
     (delete-meta db)
-    (io/delete-file "resources/test/tmp-test.csv")))
+    (io/delete-file tmp-filename)))
+
+(deftest append-to-nippy
+  (let [tmp-filename "resources/test/tmp-test.ndnippy"
+        inf (io/file "resources/test/test.ndnippy")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (nddb/db :filename tmp-filename
+                    :id-path :id)
+        _ (-> db :index deref)
+        doc {:id 1 :b "c" :d "e"}
+        new-db (sut/append db doc)]
+    (-> new-db :index deref)
+    (is (not= doc (nddb/q db 1)) "Old db returns old doc")
+    (is (= doc (nddb/q new-db 1)) "New db returns new version")
+    (delete-meta db)
+    (io/delete-file tmp-filename)))
 
 (deftest query-historical-db
   (let [tmp-filename "resources/test/tmp-test.csv"
