@@ -3,7 +3,8 @@
             [clojure.core.reducers :as r]
             [nd-db
              [util :as ndut]
-             [io :as ndio]])
+             [io :as ndio]]
+            [clojure.string :as str])
   (:import [java.time Instant]
            [java.io
             BufferedReader FileReader
@@ -102,7 +103,7 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
                     db)))
   (ndio/append-writer (or serialized-filename (ndio/serialized-db-filepath db))))
 
-(defn append
+(defn ^:fx append
   "Appends a doc to the index, returns the updated database value."
   [{:keys [id-fn id-path] :as db} docs doc-emission-strs]
   {:pre [(ndut/db? db)
@@ -124,30 +125,34 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
         doc-ids (map doc-id-fn docs)
         [_ [offset length]] (-> serialized-filename
                                 ndio/last-line
-                                ndio/str->)]
-
+                                ndio/str->)
+        index-data (loop [this-offset (+ offset length 1)
+                            des doc-emission-strs
+                            ids doc-ids
+                            aggr []]
+                       (if (empty? ids)
+                         aggr
+                         (let [doc-str-count (-> des first count)
+                               next-offset (+ this-offset doc-str-count 1)]
+                           (when (zero? doc-str-count)
+                             (throw (ex-info
+                                     "Stringified document can't have length 0!"
+                                     {:vid (first ids)
+                                      :doc-emission-str (first des)})))
+                           (recur next-offset (rest des) (rest ids)
+                                  (conj aggr [(first ids) [this-offset doc-str-count]])))))]
     (with-open [w (append-writer db serialized-filename)]
-      (let [index-data (loop [this-offset (+ offset length 1)
-                              des doc-emission-strs
-                              ids doc-ids
-                              aggr []]
-                         (if (empty? ids)
-                           aggr
-                           (let [doc-str-count (-> des first count)
-                                 next-offset (+ this-offset doc-str-count 1)]
-                             (recur next-offset (rest des) (rest ids)
-                                    (conj aggr [(first ids) [this-offset doc-str-count]])))))]
-        (doseq [ivec index-data]
-          (#'ndio/write-nippy-ln w ivec))
-        (.flush w)
-        (update db :index
-                (fn [idx]
-                  (delay
-                    (reduce
-                     (fn [a [doc-id idx-vec]]
-                       (assoc a doc-id idx-vec))
-                     (deref idx)
-                     index-data))))))))
+      (doseq [ivec index-data]
+        (#'ndio/write-nippy-ln w ivec))
+      (.flush w))
+    (update db :index
+            (fn [idx]
+              (delay
+                (reduce
+                 (fn [a [doc-id idx-vec]]
+                   (assoc a doc-id idx-vec))
+                 (deref idx)
+                 index-data))))))
 
 (defn re-index
   "Re-index the database, with a limit on the log size.

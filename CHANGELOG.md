@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta8] - 2023-10-04
+
+### Fixed
+
+- Indexing didn't work when appending more than [batch size] documents
+
+NB: [batch size] is currently set to 128.
+
 ## [0.9.0-beta6+7] - 2023-10-03
 
 - Append documents to existing nd-db files (previously v1.0.0)
