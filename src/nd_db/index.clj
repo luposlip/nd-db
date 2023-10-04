@@ -123,24 +123,22 @@ Consider converting the index via nd-db.convert/upgrade-nddbmeta!
         docs (if (map? docs) [docs] docs)
         doc-emission-strs (if (string? doc-emission-strs) [doc-emission-strs] doc-emission-strs)
         doc-ids (map doc-id-fn docs)
-        [_ [offset length]] (-> serialized-filename
-                                ndio/last-line
-                                ndio/str->)
+        [offset length] (->> db :index deref (map second) (sort-by first >) first)
         index-data (loop [this-offset (+ offset length 1)
-                            des doc-emission-strs
-                            ids doc-ids
-                            aggr []]
-                       (if (empty? ids)
-                         aggr
-                         (let [doc-str-count (-> des first count)
-                               next-offset (+ this-offset doc-str-count 1)]
-                           (when (zero? doc-str-count)
-                             (throw (ex-info
-                                     "Stringified document can't have length 0!"
-                                     {:vid (first ids)
-                                      :doc-emission-str (first des)})))
-                           (recur next-offset (rest des) (rest ids)
-                                  (conj aggr [(first ids) [this-offset doc-str-count]])))))]
+                          des doc-emission-strs
+                          ids doc-ids
+                          aggr []]
+                     (if (empty? ids)
+                       aggr
+                       (let [doc-str-count (-> des first count)
+                             next-offset (+ this-offset doc-str-count 1)]
+                         (when (zero? doc-str-count)
+                           (throw (ex-info
+                                   "Stringified document can't have length 0!"
+                                   {:vid (first ids)
+                                    :doc-emission-str (first des)})))
+                         (recur next-offset (rest des) (rest ids)
+                                (conj aggr [(first ids) [this-offset doc-str-count]])))))]
     (with-open [w (append-writer db serialized-filename)]
       (doseq [ivec index-data]
         (#'ndio/write-nippy-ln w ivec))
