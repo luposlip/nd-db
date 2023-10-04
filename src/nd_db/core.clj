@@ -178,15 +178,16 @@ meaning DON'T do parallel writes to database..!"
   (when (or (nil? doc-emitter)
             log-limit)
     (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
-  (let [docs (if (map? doc-or-docs)
-               [doc-or-docs]
-               doc-or-docs)]
-    (loop [all-docs-part (partition-all 128 docs)
+  (let [all-docs (if (map? doc-or-docs)
+                   [doc-or-docs]
+                   doc-or-docs)]
+    (loop [docs-parts (partition-all 128 all-docs)
            aggr-db db]
-      (if (empty? all-docs-part)
+      (if (empty? docs-parts)
         aggr-db
-        (let [docs-part-stringed (map doc-emitter (first all-docs-part))]
-          (recur (rest all-docs-part)
+        (let [docs-part (first docs-parts)
+              docs-part-stringed (map doc-emitter docs-part)]
+          (recur (rest docs-parts)
                  (-> aggr-db
                      (emit-docs (->> docs-part-stringed (str/join "\n")))
-                     (ndix/append docs docs-part-stringed))))))))
+                     (ndix/append docs-part docs-part-stringed))))))))

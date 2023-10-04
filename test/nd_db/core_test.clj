@@ -288,6 +288,10 @@
         "New index line count is old line count plus docs appended")
     (is (not= (first docs) (nddb/q db 1)) "Old db returns old doc")
     (is (= (first docs) (nddb/q new-db 1)) "New db returns new version")
+
+    (let [fresh-db (nddb/db :filename tmp-filename :id-path :id)]
+      (-> fresh-db :index deref)
+      (is (= (peek docs) (-> fresh-db (nddb/q 222))) "Re-read updated index & q"))
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
