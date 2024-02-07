@@ -150,7 +150,7 @@
             (maybe-update-filename filename))))
 
     (catch ExceptionInfo e
-      (if (-> e ex-message (str/includes "Thaw"))
+      (if (-> e ex-message (str/includes? "Thaw"))
         (throw (ex-info "Unable to read nippy, db created with newer version?"
                         {:nippy-meta (ex-data e)
                          :filename filename
