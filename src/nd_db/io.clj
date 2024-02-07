@@ -12,7 +12,8 @@
              [io :as ndio]
              [id-fns :as ndid]
              [csv :as ndcs]])
-  (:import [java.io File Writer FileWriter BufferedWriter
+  (:import [clojure.lang ExceptionInfo]
+           [java.io File Writer FileWriter BufferedWriter
             RandomAccessFile]))
 
 (defn tmpdir []
@@ -147,6 +148,15 @@
                    :doc-parser (params->doc-parser params)
                    :doc-emitter (params->doc-emitter params))
             (maybe-update-filename filename))))
+
+    (catch ExceptionInfo e
+      (if (-> e ex-message (str/includes "Thaw"))
+        (throw (ex-info "Unable to read nippy, db created with newer version?"
+                        {:nippy-meta (ex-data e)
+                         :filename filename
+                         :serialized-filename serialized-filename
+                         :meta meta}))
+        (throw e)))
     (catch Exception e
       (when (or (-> e ex-message (str/includes? "String.getBytes"))
                 (str/includes? (ex-message e) "base64"))

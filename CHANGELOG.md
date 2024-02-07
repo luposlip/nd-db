@@ -7,6 +7,18 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta9] - 2024-02-07
+
+### Enhanced
+
+- Specific error message when serialized nippy cannot be read (probably because
+  of nippy versioning discrepancies)
+
+### Updated
+
+- nippy library updated from 3.2.0 to 3.3.0
+- cheshire and commons-compress also updated
+
 ## [0.9.0-beta8] - 2023-10-04
 
 ### Fixed
