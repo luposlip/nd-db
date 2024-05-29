@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta10] - 2024-05-29
+
+### Enhanced
+
+- Added compress fns to work with .tar.gz archives
+
+### Updated
+
+- Updated deps
+
 ## [0.9.0-beta9] - 2024-02-07
 
 ### Enhanced
