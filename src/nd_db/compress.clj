@@ -8,7 +8,9 @@
            [org.apache.commons.compress.archivers.tar
             TarArchiveEntry TarArchiveOutputStream TarFile]
            [org.apache.commons.compress.compressors
-            CompressorInputStream CompressorStreamFactory]))
+            CompressorInputStream CompressorStreamFactory]
+           [org.apache.commons.compress.compressors.gzip
+            GzipCompressorOutputStream]))
 
 (defn compressed-input-stream ^CompressorInputStream [filename]
   (let [in ^BufferedInputStream (io/input-stream filename)]
@@ -18,9 +20,17 @@
   (let [out ^BufferedOutputStream (io/output-stream filename)]
     (ZipArchiveOutputStream. out)))
 
-(defn tar-output-stream ^TarArchiveOutputStream [filename]
+(defn tar-output-stream "Creates an uncompressed tar ball"
+  ^TarArchiveOutputStream [filename]
   (let [out ^BufferedOutputStream (io/output-stream filename)]
     (TarArchiveOutputStream. out)))
+
+(defn tar-gz-output-stream
+  "Creates a compressed TAR ball"
+  ^TarArchiveOutputStream [filename]
+  (let [bos ^BufferedOutputStream (io/output-stream filename)
+        gzo (GzipCompressorOutputStream. bos)]
+    (TarArchiveOutputStream. gzo)))
 
 (defn write-zip-entry! [^ZipArchiveOutputStream zip-os ^"[B" bytes ^String entry-name]
   (let [ze (ZipArchiveEntry. entry-name)]

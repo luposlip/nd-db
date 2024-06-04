@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta11] - 2024-06-04
+
+### Enhanced
+
+- Wrapping gz outputstream with tar outputstream for new fn tar-gz-outputstream
+
 ## [0.9.0-beta10] - 2024-05-29
 
 ### Enhanced
