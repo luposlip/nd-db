@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta12] - 2024-07-17
+
+### Enhanced
+
+- Slim down by extracting `compress` ns to new library: `com.luposlip/clarch`
+- `or-q` now queries a seq of databases (by single ID), until a non-nil result is returned
+
 ## [0.9.0-beta11] - 2024-06-04
 
 ### Enhanced

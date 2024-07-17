@@ -99,6 +99,16 @@
   {:pre [(sequential? ids)]}
   (keep (partial q db) ids))
 
+(defn or-q [dbs id-or-ids]
+  {:pre [(every? ndut/db? dbs)]}
+  (when (and (coll? id-or-ids)
+             (not (map? id-or-ids)))
+    (throw (ex-info "or-q currently only support single IDs!" {:id-or-ids id-or-ids})))
+  (loop [dbs dbs]
+    (when (seq dbs)
+      (or (q (first dbs) id-or-ids)
+          (recur (rest dbs))))))
+
 (defn- lazy-docs-eager-idx
   "This will work for any database metadata version.
    If no metadata exist, that will be generated first (which may take a while

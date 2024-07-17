@@ -5,8 +5,7 @@
              [core :as sut]
              [util :as ndut]
              [io :as ndio]
-             [index :as ndix]]
-            [nd-db.core :as nddb]))
+             [index :as ndix]]))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -175,7 +174,7 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        {:keys [doc-emitter] :as db} (nddb/db {:filename tmp-filename
+        {:keys [doc-emitter] :as db} (sut/db {:filename tmp-filename
                                                :col-separator ","
                                                :id-path :a})
         old-count (-> db :index deref count)
@@ -194,7 +193,7 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        {:keys [doc-emitter] :as db} (nddb/db {:filename tmp-filename
+        {:keys [doc-emitter] :as db} (sut/db {:filename tmp-filename
                                                :col-separator ","
                                                :id-path :a})
         old-count (-> db :index deref count)
@@ -206,10 +205,10 @@
         "Ensure that the last line of the database is now the new doc")
     (is (= (inc old-count) (-> new-db :index deref count))
         "Ensure that the new line is inserted into the database")
-    (is (= (select-keys doc [:a :b :c]) (nddb/q new-db new-id))
+    (is (= (select-keys doc [:a :b :c]) (sut/q new-db new-id))
         "Query new doc from new database index")
     (delete-meta new-db)
-    (let [db (nddb/db {:filename tmp-filename
+    (let [db (sut/db {:filename tmp-filename
                        :col-separator ","
                        :id-path :a})]
       (with-open [r (ndix/reader db)]
@@ -217,7 +216,7 @@
                  {:a 3 :b "b" :c 4}
                  {:a "c" :b 5 :c 6}
                  {:a new-id :b "b movie" :c "sharp"}}
-               (set (nddb/q db (nddb/lazy-ids db))))
+               (set (sut/q db (sut/lazy-ids db))))
             "Check that all docs, old and new, can be correctly read from db"))
       (delete-meta db))
     (io/delete-file tmp-filename)))
@@ -227,14 +226,14 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        db (nddb/db {:filename tmp-filename
+        db (sut/db {:filename tmp-filename
                      :col-separator ","
                      :id-path :a})
         doc {:a 1 :b "movie" :c "sharp"}
         new-db (sut/append db doc)]
     (-> new-db :index deref)
-    (is (= {:a 1 :b 7 :c "a"} (nddb/q db 1)) "Old db returns old doc")
-    (is (= doc (nddb/q new-db 1)) "New db returns new version")
+    (is (= {:a 1 :b 7 :c "a"} (sut/q db 1)) "Old db returns old doc")
+    (is (= doc (sut/q new-db 1)) "New db returns new version")
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
@@ -243,14 +242,14 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        db (nddb/db {:filename tmp-filename
+        db (sut/db {:filename tmp-filename
                      :col-separator ","
                      :id-path :a})
         doc {:a "c" :b 8 :c 9}
         new-db (sut/append db doc)]
     (-> new-db :index deref)
-    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
-    (is (= doc (nddb/q new-db "c")) "New db returns new version")
+    (is (= {:a "c" :b 5 :c 6} (sut/q db "c")) "Old db returns old doc")
+    (is (= doc (sut/q new-db "c")) "New db returns new version")
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
@@ -259,7 +258,7 @@
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        db (nddb/db {:filename tmp-filename
+        db (sut/db {:filename tmp-filename
                      :col-separator ","
                      :id-path :a})
         newest-doc {:a "c" :b 12 :c 13}
@@ -267,8 +266,8 @@
         new-db (sut/append db docs)]
     (-> db :index deref)
     (-> new-db :index deref)
-    (is (= {:a "c" :b 5 :c 6} (nddb/q db "c")) "Old db returns old doc")
-    (is (= newest-doc (nddb/q new-db "c")) "New db returns newest version")
+    (is (= {:a "c" :b 5 :c 6} (sut/q db "c")) "Old db returns old doc")
+    (is (= newest-doc (sut/q new-db "c")) "New db returns newest version")
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
@@ -277,7 +276,7 @@
         inf (io/file "resources/test/test.ndnippy")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        db (nddb/db :filename tmp-filename
+        db (sut/db :filename tmp-filename
                     :id-path :id)
         _ (-> db :index deref)
         pre-idx-lines (db-index-line-count db)
@@ -286,26 +285,48 @@
     (-> new-db :index deref)
     (is (= (+ pre-idx-lines (count docs)) (db-index-line-count new-db))
         "New index line count is old line count plus docs appended")
-    (is (not= (first docs) (nddb/q db 1)) "Old db returns old doc")
-    (is (= (first docs) (nddb/q new-db 1)) "New db returns new version")
+    (is (not= (first docs) (sut/q db 1)) "Old db returns old doc")
+    (is (= (first docs) (sut/q new-db 1)) "New db returns new version")
 
-    (let [fresh-db (nddb/db :filename tmp-filename :id-path :id)]
+    (let [fresh-db (sut/db :filename tmp-filename :id-path :id)]
       (-> fresh-db :index deref)
-      (is (= (peek docs) (-> fresh-db (nddb/q 222))) "Re-read updated index & q"))
+      (is (= (peek docs) (-> fresh-db (sut/q 222))) "Re-read updated index & q"))
     (delete-meta db)
     (io/delete-file tmp-filename)))
+
+(deftest or-q
+  (let [csv-db (sut/db :filename "resources/test/test.csv"
+                       :col-separator ","
+                       :id-path :a)
+        json-db (sut/db :filename "resources/test/test.ndjson"
+                        :id-fn by-id)]
+    (is (= {:a 1 :b 7 :c "a"}
+           (sut/or-q [csv-db json-db] 1))
+        "ID exist in both databases, return from the first (CSV)")
+    (is (= {:id 1 :data ["some" "semi-random" "data"]}
+           (sut/or-q [json-db csv-db] 1))
+        "ID exist in both databases, return from the first (JSON)")
+    (is (= {:id 222 :data 42}
+           (sut/or-q [csv-db json-db] 222))
+        "ID only exist in the second database (JSON)")
+    (is (= {:a "c" :b 5 :c 6}
+           (sut/or-q [json-db csv-db] "c"))
+        "ID only exist in the second database (CSV)")
+    (is (= {:a "c" :b 5 :c 6}
+           (sut/or-q [csv-db json-db] "c"))
+        "ID only exist in the first database (CSV)")))
 
 (deftest query-historical-db
   (let [tmp-filename "resources/test/tmp-test.csv"
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
-        old-db (nddb/db {:filename tmp-filename
+        old-db (sut/db {:filename tmp-filename
                          :col-separator ","
                          :id-path :a
                          :log-limit 2})
         _ (-> old-db :index deref)
-        current-db (nddb/db {:filename tmp-filename
+        current-db (sut/db {:filename tmp-filename
                              :col-separator ","
                              :id-path :a})
         _ (-> current-db :index deref)
@@ -321,17 +342,17 @@
       ;; properly implemented! Right now index is persisted based on final map
       ;; of ids to offset/length pairs.. It should be written per document! So
       ;; that's a somewhat big refactoring..
-      ;; TODO: Enable: (is (= 2 (-> old-db (nddb/q 1) :b)) "This is the oldest version of doc w/id=1")
-      (is (= nil (nddb/q old-db "c"))
+      ;; TODO: Enable: (is (= 2 (-> old-db (sut/q 1) :b)) "This is the oldest version of doc w/id=1")
+      (is (= nil (sut/q old-db "c"))
           "Old db doesn't know about doc with id=c"))
 
     (testing "Current database"
-      (is (= 7 (-> current-db (nddb/q 1) :b))
+      (is (= 7 (-> current-db (sut/q 1) :b))
           "This is the newest version of doc w/id=1")
-      (is (= current-doc (nddb/q current-db "c"))
+      (is (= current-doc (sut/q current-db "c"))
           "Current db returns current c doc"))
 
-    (is (= new-doc (nddb/q new-db "c")) "New db returns new c doc")
+    (is (= new-doc (sut/q new-db "c")) "New db returns new c doc")
 
     (delete-meta new-db)
     (io/delete-file "resources/test/tmp-test.csv")))
