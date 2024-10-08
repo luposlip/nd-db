@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file. This change
 - Historical document versions
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
+- query JSON/EDN files directly from a `.tar.gz` file
+
+## [0.9.0-beta13] - 2024-10-08
+
+### Enhanced
+
+- Replaced cheshire with charred, for less dependencies
+- Upgraded clojure to version 1.12.0
 
 ## [0.9.0-beta12] - 2024-07-17
 

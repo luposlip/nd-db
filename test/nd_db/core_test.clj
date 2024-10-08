@@ -216,7 +216,7 @@
                  {:a 3 :b "b" :c 4}
                  {:a "c" :b 5 :c 6}
                  {:a new-id :b "b movie" :c "sharp"}}
-               (set (sut/q db (sut/lazy-ids db))))
+               (set (sut/q db (sut/lazy-ids r))))
             "Check that all docs, old and new, can be correctly read from db"))
       (delete-meta db))
     (io/delete-file tmp-filename)))
@@ -237,30 +237,14 @@
     (delete-meta db)
     (io/delete-file tmp-filename)))
 
-(deftest append-new-version-of-last-doc
+(deftest append-new-versions-2
   (let [tmp-filename "resources/test/tmp-test.csv"
         inf (io/file "resources/test/test.csv")
         outf (io/file tmp-filename)
         _ (io/copy inf outf)
         db (sut/db {:filename tmp-filename
-                     :col-separator ","
-                     :id-path :a})
-        doc {:a "c" :b 8 :c 9}
-        new-db (sut/append db doc)]
-    (-> new-db :index deref)
-    (is (= {:a "c" :b 5 :c 6} (sut/q db "c")) "Old db returns old doc")
-    (is (= doc (sut/q new-db "c")) "New db returns new version")
-    (delete-meta db)
-    (io/delete-file tmp-filename)))
-
-(deftest append-new-versions
-  (let [tmp-filename "resources/test/tmp-test.csv"
-        inf (io/file "resources/test/test.csv")
-        outf (io/file tmp-filename)
-        _ (io/copy inf outf)
-        db (sut/db {:filename tmp-filename
-                     :col-separator ","
-                     :id-path :a})
+                    :col-separator ","
+                    :id-path :a})
         newest-doc {:a "c" :b 12 :c 13}
         docs [{:a "c" :b 8 :c 9} {:a "c" :b 10 :c 11} newest-doc]
         new-db (sut/append db docs)]
@@ -268,6 +252,22 @@
     (-> new-db :index deref)
     (is (= {:a "c" :b 5 :c 6} (sut/q db "c")) "Old db returns old doc")
     (is (= newest-doc (sut/q new-db "c")) "New db returns newest version")
+    (delete-meta db)
+    (io/delete-file tmp-filename)))
+
+(deftest append-new-version-of-last-doc
+  (let [tmp-filename "resources/test/tmp-test.csv"
+        inf (io/file "resources/test/test.csv")
+        outf (io/file tmp-filename)
+        _ (io/copy inf outf)
+        db (sut/db {:filename tmp-filename
+                    :col-separator ","
+                    :id-path :a})
+        doc {:a "c" :b 8 :c 9}
+        new-db (sut/append db doc)]
+    (-> new-db :index deref)
+    (is (= {:a "c" :b 5 :c 6} (sut/q db "c")) "Old db returns old doc")
+    (is (= doc (sut/q new-db "c")) "New db returns new version")
     (delete-meta db)
     (io/delete-file tmp-filename)))
 

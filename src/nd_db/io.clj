@@ -4,7 +4,7 @@
              [edn :as edn]]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
-            [cheshire.core :as json]
+            [charred.api :as charred]
             [taoensso.nippy :as nippy]
             digest
             [nd-db
@@ -103,7 +103,7 @@
 
 (defn params->doc-parser [{:keys [doc-type] :as params}]
   (case doc-type
-    :json #(json/parse-string % true)
+    :json #(charred/read-json % :key-fn keyword)
     :edn edn/read-string
     :nippy ndio/str->
     :csv (ndcs/csv-row->data params)
@@ -112,7 +112,7 @@
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
   (when-not log-limit
     (case doc-type
-      :json json/encode
+      :json charred/write-json-str
       :edn str
       :nippy ndio/->str
       :csv (ndcs/data->csv-row params)
