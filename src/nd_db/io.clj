@@ -101,13 +101,14 @@
           (assoc :filename filename))
       d)))
 
-(defn params->doc-parser [{:keys [doc-type] :as params}]
-  (case doc-type
-    :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
-    :edn #(edn/read-string (String.^"[B" %))
-    :nippy #(ndio/str-> (String. ^"[B" %))
-    :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
-    :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+(defn params->doc-parser [{:keys [doc-parser doc-type] :as params}]
+  (or doc-parser
+      (case doc-type
+        :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
+        :edn #(edn/read-string (String.^"[B" %))
+        :nippy #(ndio/str-> (String. ^"[B" %))
+        :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
+        :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
   (when-not log-limit
@@ -129,12 +130,11 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename log-limit doc-parser] :as params}
+  [{:keys [filename log-limit] :as params}
    serialized-filename]
   (try
     (let [r (io/reader ^String serialized-filename)
           [meta] (line-seq r)]
-      (.close r)
       (-> meta
           str->
           (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
@@ -147,11 +147,8 @@
                                           %))
                                       (map str->)
                                       (into {}))))
-                 :doc-parser (or doc-parser
-                                 (params->doc-parser params))
-                 :doc-emitter (if doc-parser
-                                nil
-                                (params->doc-emitter params)))
+                 :doc-parser (params->doc-parser params)
+                 :doc-emitter (params->doc-emitter params))
           (maybe-update-filename filename)))
 
     (catch ExceptionInfo e

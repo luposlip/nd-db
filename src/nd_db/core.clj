@@ -36,7 +36,7 @@
              ndio/serialize-db
              (ndix/re-index (:log-limit params)))))))
 
-(defn zip-db [& {:keys [filename] :as params}]
+(defn zip-db [& {:as params}]
   (let [serialized-filepath (ndio/serialized-db-filepath params)
         params (assoc params
                       :doc-parser #(-> % clarch/deflate-bytes
@@ -209,7 +209,10 @@ meaning DON'T do parallel writes to database..!"
   {:pre [((some-fn map? sequential?) doc-or-docs)]}
   (when (or (nil? doc-emitter)
             log-limit)
-    (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
+    (throw
+     (ex-info
+      "Can't write when doc-emitter is nil or to a historical database (when log-limit is set)!" {:doc-emitter doc-emitter
+                                                                                                  :log-limit log-limit})))
   (let [all-docs (if (map? doc-or-docs)
                    [doc-or-docs]
                    doc-or-docs)]
