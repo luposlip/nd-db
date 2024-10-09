@@ -132,26 +132,27 @@
   [{:keys [filename log-limit doc-parser] :as params}
    serialized-filename]
   (try
-    (with-open [r (io/reader ^String serialized-filename)]
-      (let [[meta] (line-seq r)]
-        (-> meta
-            str->
-            (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
-                                   (->> r2
-                                        line-seq
-                                        rest
-                                        (#(if (and (number? log-limit)
-                                                   (pos? log-limit))
-                                            (take log-limit %)
-                                            %))
-                                        (map str->)
-                                        (into {}))))
-                   :doc-parser (or doc-parser
-                                   (params->doc-parser params))
-                   :doc-emitter (if doc-parser
-                                  nil
-                                  (params->doc-emitter params)))
-            (maybe-update-filename filename))))
+    (let [r (io/reader ^String serialized-filename)
+          [meta] (line-seq r)]
+      (.close r)
+      (-> meta
+          str->
+          (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
+                                 (->> r2
+                                      line-seq
+                                      rest
+                                      (#(if (and (number? log-limit)
+                                                 (pos? log-limit))
+                                          (take log-limit %)
+                                          %))
+                                      (map str->)
+                                      (into {}))))
+                 :doc-parser (or doc-parser
+                                 (params->doc-parser params))
+                 :doc-emitter (if doc-parser
+                                nil
+                                (params->doc-emitter params)))
+          (maybe-update-filename filename)))
 
     (catch ExceptionInfo e
       (if (-> e ex-message (str/includes? "Thaw"))

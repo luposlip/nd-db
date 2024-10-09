@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file. This change
 ### TODO
 
 - Does `ndfile-md5` work for zip files? Otherwise tweak `serialized-db-filepath`
+- `:as-of` isn't set in the `parse-db`'ed zip database
 
 ## [0.9.0-beta12] - 2024-07-17
 
