@@ -103,10 +103,10 @@
 
 (defn params->doc-parser [{:keys [doc-type] :as params}]
   (case doc-type
-    :json #(charred/read-json % :key-fn keyword)
-    :edn edn/read-string
-    :nippy ndio/str->
-    :csv (ndcs/csv-row->data params)
+    :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
+    :edn #(edn/read-string (String.^"[B" %))
+    :nippy #(ndio/str-> (String. ^"[B" %))
+    :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
     :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
@@ -129,7 +129,8 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename log-limit] :as params} serialized-filename]
+  [{:keys [filename log-limit doc-parser] :as params}
+   serialized-filename]
   (try
     (with-open [r (io/reader ^String serialized-filename)]
       (let [[meta] (line-seq r)]
@@ -145,8 +146,11 @@
                                             %))
                                         (map str->)
                                         (into {}))))
-                   :doc-parser (params->doc-parser params)
-                   :doc-emitter (params->doc-emitter params))
+                   :doc-parser (or doc-parser
+                                   (params->doc-parser params))
+                   :doc-emitter (if doc-parser
+                                  nil
+                                  (params->doc-emitter params)))
             (maybe-update-filename filename))))
 
     (catch ExceptionInfo e
@@ -243,7 +247,7 @@
   (shell/sh "mv" source target))
 
 (defn ^BufferedWriter append-writer
-  "Return af BufferedWriter for the database index.
+  "Return a BufferedWriter for the database index.
    Use in a with-open block or close explicitly."
   [^String filename & _]
   {:pre [(string? filename)]
