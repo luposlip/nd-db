@@ -5,7 +5,7 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
   :dependencies [[org.clojure/clojure "1.12.0"]
                  [com.taoensso/nippy "3.4.2"]
-                 [com.luposlip/clarch "0.2.0"]
+                 [com.luposlip/clarch "0.3.1"]
                  [digest "1.4.10"]
                  [com.cnuernber/charred "1.034"]]
   :global-vars {*warn-on-reflection* true}
