@@ -4,7 +4,7 @@
              [edn :as edn]]
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
-            [cheshire.core :as json]
+            [charred.api :as charred]
             [taoensso.nippy :as nippy]
             digest
             [nd-db
@@ -101,18 +101,19 @@
           (assoc :filename filename))
       d)))
 
-(defn params->doc-parser [{:keys [doc-type] :as params}]
-  (case doc-type
-    :json #(json/parse-string % true)
-    :edn edn/read-string
-    :nippy ndio/str->
-    :csv (ndcs/csv-row->data params)
-    :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+(defn params->doc-parser [{:keys [doc-parser doc-type] :as params}]
+  (or doc-parser
+      (case doc-type
+        :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
+        :edn #(edn/read-string (String.^"[B" %))
+        :nippy #(ndio/str-> (String. ^"[B" %))
+        :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
+        :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
   (when-not log-limit
     (case doc-type
-      :json json/encode
+      :json charred/write-json-str
       :edn str
       :nippy ndio/->str
       :csv (ndcs/data->csv-row params)
@@ -129,25 +130,26 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename log-limit] :as params} serialized-filename]
+  [{:keys [filename log-limit] :as params}
+   serialized-filename]
   (try
-    (with-open [r (io/reader ^String serialized-filename)]
-      (let [[meta] (line-seq r)]
-        (-> meta
-            str->
-            (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
-                                   (->> r2
-                                        line-seq
-                                        rest
-                                        (#(if (and (number? log-limit)
-                                                   (pos? log-limit))
-                                            (take log-limit %)
-                                            %))
-                                        (map str->)
-                                        (into {}))))
-                   :doc-parser (params->doc-parser params)
-                   :doc-emitter (params->doc-emitter params))
-            (maybe-update-filename filename))))
+    (let [r (io/reader ^String serialized-filename)
+          [meta] (line-seq r)]
+      (-> meta
+          str->
+          (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
+                                 (->> r2
+                                      line-seq
+                                      rest
+                                      (#(if (and (number? log-limit)
+                                                 (pos? log-limit))
+                                          (take log-limit %)
+                                          %))
+                                      (map str->)
+                                      (into {}))))
+                 :doc-parser (params->doc-parser params)
+                 :doc-emitter (params->doc-emitter params))
+          (maybe-update-filename filename)))
 
     (catch ExceptionInfo e
       (if (-> e ex-message (str/includes? "Thaw"))
@@ -243,7 +245,7 @@
   (shell/sh "mv" source target))
 
 (defn ^BufferedWriter append-writer
-  "Return af BufferedWriter for the database index.
+  "Return a BufferedWriter for the database index.
    Use in a with-open block or close explicitly."
   [^String filename & _]
   {:pre [(string? filename)]

@@ -3,8 +3,7 @@
             [clojure.core.reducers :as r]
             [nd-db
              [util :as ndut]
-             [io :as ndio]]
-            [clojure.string :as str])
+             [io :as ndio]])
   (:import [java.time Instant]
            [java.io
             BufferedReader FileReader

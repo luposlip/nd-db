@@ -7,6 +7,19 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta13/14] - 2024-10-09
+
+### Enhanced
+
+- Replaced cheshire with charred, for less dependencies
+- Upgraded clojure to version 1.12.0
+- Experimental alpha for treating `.zip` files as databases
+
+### TODO
+
+- Does `ndfile-md5` work for zip files? Otherwise tweak `serialized-db-filepath`
+- `:as-of` isn't set in the `parse-db`'ed zip database
+
 ## [0.9.0-beta12] - 2024-07-17
 
 ### Enhanced

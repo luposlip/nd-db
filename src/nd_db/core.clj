@@ -1,11 +1,15 @@
 (ns nd-db.core
-  (:require [clojure.java.io :as io]
+  (:require [clojure
+             [string :as str]
+             [edn :as edn]]
+            [clojure.java.io :as io]
+            [clarch.core :as clarch]
             [nd-db
              [io :as ndio]
              [index :as ndix]
+             [zip-index :as ndzx]
              [util :as ndut]]
-            [nd-db.core :as nddb]
-            [clojure.string :as str])
+            [nd-db.core :as nddb])
   (:import [java.io File RandomAccessFile BufferedReader]))
 
 (defn- raw-db
@@ -31,6 +35,25 @@
              raw-db
              ndio/serialize-db
              (ndix/re-index (:log-limit params)))))))
+
+(defn zip-db [& {:as params}]
+  (let [serialized-filepath (ndio/serialized-db-filepath params)
+        params (assoc params
+                      :doc-parser #(-> % clarch/deflate-bytes
+                                       slurp edn/read-string))]
+    (if (.isFile ^File (io/file serialized-filepath))
+      (ndio/parse-db params serialized-filepath)
+      (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)
+            index (delay (ndzx/zip-index params))]
+        (-> params
+            (dissoc :id-fn)
+            (assoc :serialized-filename serialized-filename
+                   :version "0.9.0"
+                   :index index
+                   :as-of (delay (-> @index meta :as-of)))
+            ndio/serialize-db
+            ;;(ndix/re-index (:log-limit params)) ;; ever needed for zip?
+            )))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -73,7 +96,7 @@
         (.seek start)
         (.read bytes 0 len)
         (.close))
-      (doc-parser (String. bytes)))))
+      (doc-parser bytes))))
 
 (defmulti q
   "Queries a single or multiple docs from the database by a single or
@@ -187,7 +210,10 @@ meaning DON'T do parallel writes to database..!"
   {:pre [((some-fn map? sequential?) doc-or-docs)]}
   (when (or (nil? doc-emitter)
             log-limit)
-    (throw (ex-info "Can't write to historical database (when log-limit is set)!" {:log-limit log-limit})))
+    (throw
+     (ex-info
+      "Can't write when doc-emitter is nil or to a historical database (when log-limit is set)!" {:doc-emitter doc-emitter
+                                                                                                  :log-limit log-limit})))
   (let [all-docs (if (map? doc-or-docs)
                    [doc-or-docs]
                    doc-or-docs)]
