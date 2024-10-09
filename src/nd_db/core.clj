@@ -52,7 +52,8 @@
                    :index index
                    :as-of (delay (-> @index meta :as-of)))
             ndio/serialize-db
-            (ndix/re-index (:log-limit params)))))))
+            ;;(ndix/re-index (:log-limit params)) ;; ever needed for zip?
+            )))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
