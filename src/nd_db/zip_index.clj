@@ -27,11 +27,10 @@
   {:pre [(ifn? id-fn)]}
   (let [f (io/file filename)
         zems (clarch/zip-entry-metas f)]
-    (with-meta (->> zems
-                    (take 2)
-                    (reduce (zip-entry-meta->idx-reducer
-                             (zf->id-fn f opts))
-                            {}))
+    (with-meta (reduce (zip-entry-meta->idx-reducer
+                        (zf->id-fn f opts))
+                       {}
+                       zems)
       {:as-of (Instant/now)})))
 
 #_
