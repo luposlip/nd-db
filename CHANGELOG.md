@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta15] - 2024-10-10
+
+Upgrade clarch dependency
+
 ## [0.9.0-beta13/14] - 2024-10-09
 
 ### Enhanced
