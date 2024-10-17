@@ -102,22 +102,24 @@
       d)))
 
 (defn params->doc-parser [{:keys [doc-parser doc-type] :as params}]
+  ;; TODO: Handle zip by composition
   (or doc-parser
-      (case doc-type
+      (condp = doc-type
         :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
         :edn #(edn/read-string (String.^"[B" %))
         :nippy #(ndio/str-> (String. ^"[B" %))
         :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
-        :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
+        (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
+  ;; TODO: handle zip by composition
   (when-not log-limit
-    (case doc-type
+    (condp = doc-type
       :json charred/write-json-str
       :edn str
       :nippy ndio/->str
       :csv (ndcs/data->csv-row params)
-      :else (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
+      nil)))
 
 (defn- ^{:deprecated "v0.9.0"} _parse-db
   "Parse nd-db metadata format pre v0.9.0"
@@ -130,11 +132,12 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename log-limit] :as params}
-   serialized-filename]
+  [{:keys [filename log-limit] :as params} serialized-filename]
+  ;; TODO: If zip and no doc-parser supplied, break
   (try
     (let [r (io/reader ^String serialized-filename)
           [meta] (line-seq r)]
+      (.close r)
       (-> meta
           str->
           (assoc :index (delay (with-open [r2 (io/reader ^String serialized-filename)]
