@@ -178,13 +178,16 @@
         (.flush))
       (count data-str))))
 
-(defn- infer-doctype [filename]
+(def ^:private valid-zip-types #{:json :edn})
+
+(defn- infer-doctype [{:keys [filename doc-type]}]
   (condp = (last (str/split filename #"\."))
     "ndnippy" :nippy
     "ndjson" :json
     "ndedn" :edn
     "csv" :csv
     "tsv" :tsv
+    "zip" (or (valid-zip-types doc-type) :unknown)
     :unknown))
 
 (defn parse-params
@@ -209,7 +212,7 @@
                 (:doc-type %)
                 (:doc-parser %)
                 ((some-fn ifn? nil?) (:doc-emitter %)))]}
-  (let [doc-type (infer-doctype filename)]
+  (let [doc-type (infer-doctype params)]
     (when (and id-path (and (not col-separator)
                             (not= :nippy doc-type)))
       (throw (ex-info "For performance reasons :id-path param is only allowed for .ndnippy files - recommended instead is explicity :id-fn with a regex (or :id-name and :id-type combo)" params)))

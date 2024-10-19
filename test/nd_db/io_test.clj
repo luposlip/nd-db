@@ -43,9 +43,15 @@
          (#'sut/maybe-update-filename {:filename "a"} "b"))))
 
 (deftest infer-doctype
-  (is (= :csv (#'sut/infer-doctype "/some/path/to/a.csv")))
-  (is (= :nippy (#'sut/infer-doctype "/some/path/to/a.ndnippy")))
-  (is (= :unknown (#'sut/infer-doctype "/some/path/to/a.zip"))))
+  (is (= :csv (#'sut/infer-doctype {:filename "/some/path/to/a.csv"})))
+  (is (= :nippy (#'sut/infer-doctype {:filename "/some/path/to/a.ndnippy"})))
+  (is (= :unknown (#'sut/infer-doctype {:filename "/some/path/to/a.zip"}))))
+
+(deftest infer-zip-doctype
+  (is (= :unknown (#'sut/infer-doctype {:filename "unknown.zip"})))
+  (is (= :unknown (#'sut/infer-doctype {:filename "argh.zip" :doc-type :argh})))
+  (is (= :json (#'sut/infer-doctype {:filename "jsons.zip" :doc-type :json})))
+  (is (= :edn (#'sut/infer-doctype {:filename "edns.zip" :doc-type :edn}))))
 
 (deftest last-line
   (is (= "c,5,6" (sut/last-line "resources/test/test.csv"))))

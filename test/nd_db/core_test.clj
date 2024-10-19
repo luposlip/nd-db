@@ -61,7 +61,7 @@
                :data ["some" "semi-random" "data"]}]
              (vec
               (sut/q (#'sut/raw-db (ndio/parse-params {:id-fn by-id
-                                                     :filename  "resources/test/test.ndjson"}))
+                                                       :filename  "resources/test/test.ndjson"}))
                      [333333 1 77])))))
 
     (testing "using :id-name and :id-type as params"
@@ -71,9 +71,9 @@
                :data ["some" "semi-random" "data"]}]
              (vec
               (sut/q (#'sut/raw-db (ndio/parse-params {:id-name "id"
-                                                     :id-type :string
-                                                     :source-type :integer
-                                                     :filename  "resources/test/test.ndjson"}))
+                                                       :id-type :string
+                                                       :source-type :integer
+                                                       :filename  "resources/test/test.ndjson"}))
                      ["333333" "1" "77"])))))
 
     (testing "using :id-rx-str as param"
@@ -83,7 +83,7 @@
                :data ["some" "semi-random" "data"]}]
              (vec
               (sut/q (#'sut/raw-db (ndio/parse-params {:id-rx-str "^\\{\"id\":(\\d+)"
-                                                     :filename  "resources/test/test.ndjson"}))
+                                                       :filename  "resources/test/test.ndjson"}))
                      [333333 1 77])))))))
 
 (deftest query-nippy-raw-db
@@ -385,3 +385,16 @@
       (->> r line-seq
            rest
            (mapv ndio/str->))))
+
+(deftest zip-db-json
+  (let [params {:id-fn by-id
+                :doc-type :json
+                :filename "resources/test/jsons.zip"}]
+    (try (io/delete-file (#'ndio/serialized-db-filepath params)) (catch Throwable _ nil))
+    (testing "Getting a database the first time (incl. serialization)"
+      (is (ndut/db? (sut/db params))))
+    #_(let [db (sut/db params)]
+      (testing "Getting a database the second time (deserialization)"
+        (is (ndut/db? db)))
+      (testing "IDs are correctly extracted from zip"
+        (is (= #{1 222 333333} (->> db :index deref (map first) set)))))))
