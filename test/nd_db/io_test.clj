@@ -2,6 +2,7 @@
   (:require [clojure
              [test :refer :all]
              [string :as s]]
+            [clarch.core :as clarch]
             [nd-db.io :as sut]))
 
 (deftest parse-params
@@ -45,13 +46,42 @@
 (deftest infer-doctype
   (is (= :csv (#'sut/infer-doctype {:filename "/some/path/to/a.csv"})))
   (is (= :nippy (#'sut/infer-doctype {:filename "/some/path/to/a.ndnippy"})))
-  (is (= :unknown (#'sut/infer-doctype {:filename "/some/path/to/a.zip"}))))
+  (is (= :json (#'sut/infer-doctype {:filename "/some/path/to/a.ndjson"})))
+  (is (= :edn (#'sut/infer-doctype {:filename "/some/path/to/a.ndedn"}))))
 
 (deftest infer-zip-doctype
-  (is (= :unknown (#'sut/infer-doctype {:filename "unknown.zip"})))
-  (is (= :unknown (#'sut/infer-doctype {:filename "argh.zip" :doc-type :argh})))
-  (is (= :json (#'sut/infer-doctype {:filename "jsons.zip" :doc-type :json})))
-  (is (= :edn (#'sut/infer-doctype {:filename "edns.zip" :doc-type :edn}))))
+  (is (= :zip/unknown (#'sut/infer-doctype {:filename "unknown.zip"})))
+  (is (= :zip/unknown (#'sut/infer-doctype {:filename "argh.zip" :doc-type :argh})))
+  (is (= :zip/json (#'sut/infer-doctype {:filename "jsons.zip" :doc-type :json})))
+  (is (= :zip/edn (#'sut/infer-doctype {:filename "edns.zip" :doc-type :edn}))))
 
 (deftest last-line
   (is (= "c,5,6" (sut/last-line "resources/test/test.csv"))))
+
+(deftest params->doc-parser
+  (is (= :hello ((sut/params->doc-parser {:doc-type :ged
+                                          :doc-parser (constantly :hello)})
+                 "{:input {:data \"hey!\"}"))
+      "Test that explicit :doc-parser ignores set :doc-type because the :doc-type has no namespace")
+  (is (= "hey!" (get-in
+                 ((sut/params->doc-parser {:doc-type :edn})
+                  (.getBytes "{:input {:data \"hey!\"}}"))
+                 [:input :data]))
+      "Simply parses as EDN")
+  (is (= "hey!" (get-in
+                 ((sut/params->doc-parser {:doc-type :json})
+                  (.getBytes "{\"input\": {\"data\": \"hey!\"}}"))
+                 [:input :data]))
+      "Simply parses as JSON")
+  (is (= "hey!" (get-in
+                 ((sut/params->doc-parser {:doc-type :zip/json
+                                           :doc-parser clarch/unzip-bytes})
+                  (clarch/zip-bytes (.getBytes "{\"input\": {\"data\": \"hey!\"}}")))
+                 [:input :data]))
+      "Zipped JSON: Since :doc-type has namespace, composes a doc-parser function from passed :doc-parser and the one inferred from name of the :doc-type")
+  (is (= "hey!" (get-in
+                 ((sut/params->doc-parser {:doc-type :zip/edn
+                                           :doc-parser clarch/unzip-bytes})
+                  (clarch/zip-bytes (.getBytes "{:input {:data \"hey!\"}}")))
+                 [:input :data]))
+      "Zipped EDN: Since :doc-type has namespace, composes a doc-parser function from passed :doc-parser and the one inferred from name of the :doc-type"))

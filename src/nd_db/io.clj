@@ -101,15 +101,30 @@
           (assoc :filename filename))
       d)))
 
-(defn params->doc-parser [{:keys [doc-parser doc-type] :as params}]
-  ;; TODO: Handle zip by composition
-  (or doc-parser
-      (condp = doc-type
-        :json #(charred/read-json (String. ^"[B" %) :key-fn keyword)
-        :edn #(edn/read-string (String.^"[B" %))
-        :nippy #(ndio/str-> (String. ^"[B" %))
-        :csv (comp (ndcs/csv-row->data params) #(String.^"[B" %))
-        (throw (ex-info "Unknown doc-type" {:doc-type doc-type})))))
+(defn- bytes->string ^String [^"[B" b]
+  (String. b))
+
+(defn doc-type->doc-parser [{:keys [doc-type] :as params}]
+  (condp = (name doc-type)
+    "json" #(charred/read-json % :key-fn keyword)
+    "edn" (comp edn/read-string bytes->string)
+    "nippy" (comp ndio/str-> bytes->string)
+    "csv" (comp (ndcs/csv-row->data params) bytes->string)
+    (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
+
+(defn params->doc-parser
+  "Return doc-parser from doc-type.
+
+  If :doc-type has namespace doc-parser will be composed from required
+  :doc-parser plus inferred.
+
+  If :doc-type has no namespace but an optional :doc-parser has been
+  passed, will return that directly."
+  [{:keys [doc-parser doc-type] :as params}]
+  (cond (namespace doc-type)
+        (comp (doc-type->doc-parser params) doc-parser)
+        doc-parser doc-parser
+        :else (doc-type->doc-parser params)))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
   ;; TODO: handle zip by composition
@@ -132,8 +147,8 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename log-limit] :as params} serialized-filename]
-  ;; TODO: If zip and no doc-parser supplied, break
+  [{:keys [filename doc-type log-limit] :as params} serialized-filename]
+  ;; TODO: If zip and no doc-type supplied, break
   (try
     (let [r (io/reader ^String serialized-filename)
           [meta] (line-seq r)]
@@ -180,6 +195,11 @@
 
 (def ^:private valid-zip-types #{:json :edn})
 
+(defn- infer-ziptype [doc-type]
+  (if (valid-zip-types doc-type)
+    (keyword "zip" (name doc-type))
+    :zip/unknown))
+
 (defn- infer-doctype [{:keys [filename doc-type]}]
   (condp = (last (str/split filename #"\."))
     "ndnippy" :nippy
@@ -187,12 +207,12 @@
     "ndedn" :edn
     "csv" :csv
     "tsv" :tsv
-    "zip" (or (valid-zip-types doc-type) :unknown)
+    "zip" (infer-ziptype doc-type)
     :unknown))
 
 (defn parse-params
   "Parses input params for intake by raw-db"
-  [& {:keys [filename
+  [& {:keys [^String filename
              id-fn id-rx-str
              id-path
              id-name id-type
@@ -238,7 +258,7 @@
                        (vector? id-path)) (assoc :id-path id-path)
                    (= :csv doc-type)
                    (assoc :col-separator col-separator
-                          :cols (with-open [r (io/reader filename)]
+                          :cols (let [r (io/reader filename)]
                                   (ndcs/col-str->key-vec
                                    (re-pattern col-separator)
                                    (first (line-seq r))))))]

@@ -36,17 +36,17 @@
              ndio/serialize-db
              (ndix/re-index (:log-limit params)))))))
 
-(defn zip-db [& {:as params}]
-  (let [serialized-filepath (ndio/serialized-db-filepath params)
-        params (assoc params
-                      :doc-parser #(-> % clarch/deflate-bytes
-                                       slurp edn/read-string))]
+(defn zip-db [& {:as p}]
+  {:post [(ndut/db? %)]}
+  (let [parsed (-> p
+                   (assoc :doc-parser clarch/deflate-bytes)
+                   ndio/parse-params)
+        serialized-filepath (ndio/serialized-db-filepath parsed)]
     (if (.isFile ^File (io/file serialized-filepath))
-      (ndio/parse-db params serialized-filepath)
+      (ndio/parse-db parsed serialized-filepath)
       (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)
-            index (delay (ndzx/zip-index params))]
-        (-> params
-            (dissoc :id-fn)
+            index (delay (ndzx/zip-index parsed))]
+        (-> parsed
             (assoc :serialized-filename serialized-filename
                    :version "0.9.0"
                    :index index

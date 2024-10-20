@@ -9,6 +9,9 @@
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
+(defn try-delete-serialized-db [params]
+  (try (io/delete-file (#'ndio/serialized-db-filepath params)) (catch Throwable _ nil)))
+
 (defn delete-meta [db]
   (io/delete-file (ndio/serialized-db-filepath db)))
 
@@ -387,14 +390,20 @@
            (mapv ndio/str->))))
 
 (deftest zip-db-json
-  (let [params {:id-fn by-id
-                :doc-type :json
-                :filename "resources/test/jsons.zip"}]
-    (try (io/delete-file (#'ndio/serialized-db-filepath params)) (catch Throwable _ nil))
+  (let [params {:id-fn (fn [d]
+                         (->> d
+                             (#(String. ^"[B" %))
+                             (re-find #":id (\d+)")
+                             second
+                             Long/parseLong))
+                :doc-type :edn
+                :filename "resources/test/edns.zip"}]
+    (try-delete-serialized-db params)
     (testing "Getting a database the first time (incl. serialization)"
-      (is (ndut/db? (sut/db params))))
+      (is (ndut/db? (sut/zip-db params))))
     #_(let [db (sut/db params)]
       (testing "Getting a database the second time (deserialization)"
         (is (ndut/db? db)))
       (testing "IDs are correctly extracted from zip"
-        (is (= #{1 222 333333} (->> db :index deref (map first) set)))))))
+        (is (= #{1 222 333333} (->> db :index deref (map first) set)))))
+    (try-delete-serialized-db params)))
