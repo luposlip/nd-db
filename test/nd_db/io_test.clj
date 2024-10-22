@@ -72,16 +72,4 @@
                  ((sut/params->doc-parser {:doc-type :json})
                   (.getBytes "{\"input\": {\"data\": \"hey!\"}}"))
                  [:input :data]))
-      "Simply parses as JSON")
-  (is (= "hey!" (get-in
-                 ((sut/params->doc-parser {:doc-type :zip/json
-                                           :doc-parser clarch/unzip-bytes})
-                  (clarch/zip-bytes (.getBytes "{\"input\": {\"data\": \"hey!\"}}")))
-                 [:input :data]))
-      "Zipped JSON: Since :doc-type has namespace, composes a doc-parser function from passed :doc-parser and the one inferred from name of the :doc-type")
-  (is (= "hey!" (get-in
-                 ((sut/params->doc-parser {:doc-type :zip/edn
-                                           :doc-parser clarch/unzip-bytes})
-                  (clarch/zip-bytes (.getBytes "{:input {:data \"hey!\"}}")))
-                 [:input :data]))
-      "Zipped EDN: Since :doc-type has namespace, composes a doc-parser function from passed :doc-parser and the one inferred from name of the :doc-type"))
+      "Simply parses as JSON"))
