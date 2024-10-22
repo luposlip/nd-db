@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta17] - 2024-10-21
+
+### Enhanced
+
+1. Re-opening a ZIP database no longer need explicit :doc-parser, but only a :doc-type parameter of either :json or :edn.
+2. ZIP-databases can now be generated even if some ZIP entries are not deflated.
+
 ## [0.9.0-beta16] - 2024-10-17
 
 Fix reopening zip databases: For now need explicit :doc-parser!

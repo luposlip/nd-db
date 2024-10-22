@@ -389,21 +389,48 @@
            rest
            (mapv ndio/str->))))
 
-(deftest zip-db-json
-  (let [params {:id-fn (fn [d]
-                         (->> d
-                             (#(String. ^"[B" %))
-                             (re-find #":id (\d+)")
-                             second
-                             Long/parseLong))
+(deftest zip-db-edns
+  (let [params {:filename "resources/test/edns.zip"
                 :doc-type :edn
-                :filename "resources/test/edns.zip"}]
+                :id-fn (fn [d]
+                         (->> d
+                              (#(String. ^"[B" %))
+                              (re-find #":id (\d+)")
+                              second
+                              Long/parseLong))}]
     (try-delete-serialized-db params)
     (testing "Getting a database the first time (incl. serialization)"
       (is (ndut/db? (sut/zip-db params))))
-    #_(let [db (sut/db params)]
+    (let [zdb (sut/zip-db params)]
       (testing "Getting a database the second time (deserialization)"
-        (is (ndut/db? db)))
+        (is (ndut/db? zdb)))
       (testing "IDs are correctly extracted from zip"
-        (is (= #{1 222 333333} (->> db :index deref (map first) set)))))
+        (is (= #{0 231 312 123} (->> zdb :index deref (map first) set))))
+      (testing "Index entries contain the compression method (normally just offset and length)"
+        (is (= 3 (->> zdb :index deref first last count))))
+      (testing "Can query a document"
+        (is (= {:id 312} (select-keys (sut/q zdb 312) [:id])))))
+    (try-delete-serialized-db params)))
+
+(deftest zip-db-jsons
+  (let [params {:filename "resources/test/jsons.zip"
+                :doc-type :json
+                :id-fn (fn [d]
+                         (->> d
+                              (#(String. ^"[B" %))
+                              (re-find #"id\":(\d+)")
+                              second
+                              Long/parseLong))}]
+    (try-delete-serialized-db params)
+    (testing "Getting a database the first time (incl. serialization)"
+        (is (ndut/db? (sut/zip-db params))))
+    (let [zdb (sut/zip-db params)]
+        (testing "Getting a database the second time (deserialization)"
+          (is (ndut/db? zdb)))
+        (testing "IDs are correctly extracted from zip"
+          (is (= #{1 222 333333} (->> zdb :index deref (map first) set))))
+        (testing "Index entries contain the compression method (normally just offset and length)"
+          (is (= 3 (->> zdb :index deref first last count))))
+        (testing "Can query a document"
+          (is (= {:id 222 :data 42} (sut/q zdb 222)))))
     (try-delete-serialized-db params)))

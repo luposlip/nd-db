@@ -114,17 +114,11 @@
 
 (defn params->doc-parser
   "Return doc-parser from doc-type.
-
-  If :doc-type has namespace doc-parser will be composed from required
-  :doc-parser plus inferred.
-
-  If :doc-type has no namespace but an optional :doc-parser has been
-  passed, will return that directly."
-  [{:keys [doc-parser doc-type] :as params}]
-  (cond (namespace doc-type)
-        (comp (doc-type->doc-parser params) doc-parser)
-        doc-parser doc-parser
-        :else (doc-type->doc-parser params)))
+  If optional :doc-parser is passed, returns that directly."
+  [{:keys [doc-parser] :as params}]
+  {:post [(ifn? %)]}
+  (or doc-parser
+      (doc-type->doc-parser params)))
 
 (defn params->doc-emitter [{:keys [doc-type log-limit] :as params}]
   ;; TODO: handle zip by composition
@@ -147,7 +141,7 @@
 
 (defn parse-db
   "Parse nd-db metadata format v0.9.0+"
-  [{:keys [filename doc-type log-limit] :as params} serialized-filename]
+  [{:keys [filename log-limit] :as params} serialized-filename]
   ;; TODO: If zip and no doc-type supplied, break
   (try
     (let [r (io/reader ^String serialized-filename)
@@ -232,40 +226,42 @@
                 (:doc-type %)
                 (:doc-parser %)
                 ((some-fn ifn? nil?) (:doc-emitter %)))]}
-  (let [doc-type (infer-doctype params)]
-    (when (and id-path (and (not col-separator)
-                            (not= :nippy doc-type)))
-      (throw (ex-info "For performance reasons :id-path param is only allowed for .ndnippy files - recommended instead is explicity :id-fn with a regex (or :id-name and :id-type combo)" params)))
+  (if (-> params meta :parsed?)
+    params
+    (let [doc-type (infer-doctype params)]
+      (when (and id-path (and (not col-separator)
+                              (not= :nippy doc-type)))
+        (throw (ex-info "For performance reasons :id-path param is only allowed for .ndnippy files - recommended instead is explicity :id-fn with a regex (or :id-name and :id-type combo)" params)))
 
-    (when (and id-name id-type (not= :json doc-type))
-      (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
+      (when (and id-name id-type (not= :json doc-type))
+        (throw (ex-info "Right now use of :id-name and :id-type is only supported with .ndjson files. Recommend instead to use :id-fn with a regex directly, for .ndedn input" params)))
 
-    (let [parsed (cond-> (cond id-fn {:id-fn id-fn
-                                      :idx-id ""}
-                               id-rx-str (ndid/rx-str->id+fn id-rx-str)
-                               (and col-separator id-path)
-                               (ndid/csv-id+fn params)
-                               id-path (ndid/pathy->id+fn id-path str->)
-                               :else (ndid/name-type->id+fn params))
-                   true (merge
-                         (when index-folder {:index-folder index-folder}))
-                   true (assoc
-                         :doc-type doc-type
-                         :filename filename
-                         :index-persist? (not (false? index-persist?)))
-                   (number? log-limit) (assoc :log-limit log-limit)
-                   (or (keyword? id-path)
-                       (vector? id-path)) (assoc :id-path id-path)
-                   (= :csv doc-type)
-                   (assoc :col-separator col-separator
-                          :cols (let [r (io/reader filename)]
-                                  (ndcs/col-str->key-vec
-                                   (re-pattern col-separator)
-                                   (first (line-seq r))))))]
-      (with-meta (-> parsed
-                     (assoc :doc-parser (params->doc-parser parsed))
-                     (assoc :doc-emitter (params->doc-emitter parsed)))
-        {:parsed? true}))))
+      (let [parsed (cond-> (cond id-fn {:id-fn id-fn
+                                        :idx-id ""}
+                                 id-rx-str (ndid/rx-str->id+fn id-rx-str)
+                                 (and col-separator id-path)
+                                 (ndid/csv-id+fn params)
+                                 id-path (ndid/pathy->id+fn id-path str->)
+                                 :else (ndid/name-type->id+fn params))
+                     true (merge
+                           (when index-folder {:index-folder index-folder}))
+                     true (assoc
+                           :doc-type doc-type
+                           :filename filename
+                           :index-persist? (not (false? index-persist?)))
+                     (number? log-limit) (assoc :log-limit log-limit)
+                     (or (keyword? id-path)
+                         (vector? id-path)) (assoc :id-path id-path)
+                     (= :csv doc-type)
+                     (assoc :col-separator col-separator
+                            :cols (let [r (io/reader filename)]
+                                    (ndcs/col-str->key-vec
+                                     (re-pattern col-separator)
+                                     (first (line-seq r))))))]
+        (with-meta (-> parsed
+                       (assoc :doc-parser (params->doc-parser parsed))
+                       (assoc :doc-emitter (params->doc-emitter parsed)))
+          {:parsed? true})))))
 
 (defn mv-file [source target]
   (shell/sh "mv" source target))

@@ -36,24 +36,30 @@
              ndio/serialize-db
              (ndix/re-index (:log-limit params)))))))
 
+(def zip-parser (fn [& args]
+
+                     (apply clarch/raw-bytes->uncompressed-bytes args)))
+
 (defn zip-db [& {:as p}]
   {:post [(ndut/db? %)]}
-  (let [parsed (-> p
-                   (assoc :doc-parser clarch/deflate-bytes)
-                   ndio/parse-params)
+  (let [parsed (ndio/parse-params p)
         serialized-filepath (ndio/serialized-db-filepath parsed)]
-    (if (.isFile ^File (io/file serialized-filepath))
-      (ndio/parse-db parsed serialized-filepath)
-      (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)
-            index (delay (ndzx/zip-index parsed))]
-        (-> parsed
-            (assoc :serialized-filename serialized-filename
-                   :version "0.9.0"
-                   :index index
-                   :as-of (delay (-> @index meta :as-of)))
-            ndio/serialize-db
-            ;;(ndix/re-index (:log-limit params)) ;; ever needed for zip?
-            )))))
+    (update
+     (if (.isFile ^File (io/file serialized-filepath))
+       (ndio/parse-db parsed serialized-filepath)
+       (let [[_ serialized-filename] (ndio/path->folder+filename serialized-filepath)
+             index (delay (ndzx/zip-index parsed))]
+         (-> parsed
+             (assoc :serialized-filename serialized-filename
+                    :version "0.9.0"
+                    :index index
+                    :as-of (delay (-> @index meta :as-of)))
+             ndio/serialize-db
+             ;;(ndix/re-index (:log-limit params)) ;; ever needed for zip?
+             )))
+     :doc-parser
+     (fn [doctype-parser]
+       (comp doctype-parser zip-parser)))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
@@ -89,14 +95,17 @@
 (defn- read-nd-doc
   "Takes a doc-parser fn, a nd-db file and start and length.
    Return the document."
-  [doc-parser ^File db-file start len]
+  [doc-parser ^File db-file start len extra]
+  {:pre [(ifn? doc-parser)]}
   (when (and start len)
     (let [bytes (byte-array len)]
       (doto (RandomAccessFile. db-file "r")
         (.seek start)
         (.read bytes 0 len)
         (.close))
-      (doc-parser bytes))))
+      (if extra
+        (doc-parser bytes extra)
+        (doc-parser bytes)))))
 
 (defmulti q
   "Queries a single or multiple docs from the database by a single or
@@ -113,9 +122,9 @@
   [db id]
   {:pre [(ndut/db? db)
          (not (nil? id))]}
-  (let [[start len] (get @(:index db) id)
+  (let [[start len extra] (get @(:index db) id)
         nd-file (io/file ^String (:filename db))]
-    (read-nd-doc (:doc-parser db) nd-file start len)))
+    (read-nd-doc (:doc-parser db) nd-file start len extra)))
 
 (defmethod q :sequential query-multiple
   [db ids]
@@ -196,8 +205,8 @@
 
 (defn- emit-docs [db ^String doc-emission-str]
   "Emit a serialized document(s) to a database.
-NOT thread safe, only use this from a single thread,
-meaning DON'T do parallel writes to database..!"
+  NOT thread safe, only use this from a single thread,
+  meaning DON'T do parallel writes to database..!"
   {:pre [(ndut/db? db)
          (string? doc-emission-str)]}
   (with-open [w (ndio/append-writer (:filename db))]

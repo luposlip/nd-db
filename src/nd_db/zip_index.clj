@@ -4,17 +4,17 @@
   (:import [java.time Instant]))
 
 (defn zip-entry-meta->idx-reducer [id-fn]
-  (fn [a {:keys [offset compressed-size]
+  (fn [a {:keys [offset compressed-size method]
           :as i}]
     (assoc a
            (id-fn i)
-           [offset compressed-size])))
+           [offset compressed-size method])))
 
 (defn zf->id-fn [zf & {:keys [id-fn deflate]
                        :or {deflate true}}]
   (fn [entry]
     (cond->> entry
-      (true? deflate) (clarch/deflated-bytes zf)
+      (true? deflate) (clarch/zip-entry-meta->uncompressed-bytes zf)
       true id-fn)))
 
 (defn zip-index
@@ -36,15 +36,15 @@
       {:as-of (Instant/now)})))
 
 #_
-(zip-index :filename "/path/to/some-jsons.zip"
+(zip-index :filename "resources/test/jsons.zip"
            :id-fn #(-> %
-                       (charred/read-json :key-fn keyword)
-                       (get-in [:path :to :unique-id])))
+                       (charred.api/read-json :key-fn keyword)
+                       (get :id)))
 #_
-(zip-index :filename "/path/to/some-edns.zip"
+(zip-index :filename "resources/test/edns.zip"
            :id-fn (fn [d]
-                    (-> d
-                        (#(String. ^"[B" %))
-                        (re-find #":id (\d+)")
-                        second
-                        Long/parseLong)))
+                    (->> d
+                         (#(String. ^"[B" %))
+                         (re-find #":id (\d+)")
+                         second
+                         Long/parseLong)))
