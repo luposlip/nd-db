@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta18] - 2024-10-22
+
+Update clarch to enhance decompression of zip entries
+
 ## [0.9.0-beta17] - 2024-10-21
 
 ### Enhanced

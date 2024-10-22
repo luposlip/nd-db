@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.9.0-beta17"]
+[com.luposlip/nd-db "0.9.0-beta18"]
 ```
 
 _Newline Delimited (read-only) Databases!_

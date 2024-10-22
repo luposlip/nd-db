@@ -1,7 +1,6 @@
 (ns nd-db.core
   (:require [clojure
-             [string :as str]
-             [edn :as edn]]
+             [string :as str]]
             [clojure.java.io :as io]
             [clarch.core :as clarch]
             [nd-db
@@ -36,10 +35,6 @@
              ndio/serialize-db
              (ndix/re-index (:log-limit params)))))))
 
-(def zip-parser (fn [& args]
-
-                     (apply clarch/raw-bytes->uncompressed-bytes args)))
-
 (defn zip-db [& {:as p}]
   {:post [(ndut/db? %)]}
   (let [parsed (ndio/parse-params p)
@@ -59,7 +54,7 @@
              )))
      :doc-parser
      (fn [doctype-parser]
-       (comp doctype-parser zip-parser)))))
+       (comp doctype-parser clarch/zip-bytes->uncompressed-bytes)))))
 
 (defn db
   "Tries to read the specified pre-parsed database from filesystem.
