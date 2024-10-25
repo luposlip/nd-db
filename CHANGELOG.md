@@ -7,6 +7,17 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta19] - 2024-10-25
+
+Support `nippy` based files in a `zip` based database - called `zippy`
+
+This could be the new goto nippy database format, much more space efficient than
+"classic" `ndnippy`:
+
+- 300-400% faster query speeds!
+- With just 20-25% larger size than ZIP'ed EDNs
+  - for comparison, `ndnippy` is usually as large as the uncompressed EDNs
+
 ## [0.9.0-beta18] - 2024-10-22
 
 Update clarch to enhance decompression of zip entries

@@ -2,7 +2,7 @@
   (:require [clojure
              [test :refer :all]
              [string :as s]]
-            [clarch.core :as clarch]
+            [taoensso.nippy :as nippy]
             [nd-db.io :as sut]))
 
 (deftest parse-params
@@ -73,3 +73,10 @@
                   (.getBytes "{\"input\": {\"data\": \"hey!\"}}"))
                  [:input :data]))
       "Simply parses as JSON"))
+
+(deftest params->doc-parser-zippy-edition
+  (is (= "zippy here!" (get-in
+                 ((sut/params->doc-parser {:doc-type :zippy})
+                  (nippy/freeze {:input {:data "zippy here!"}}))
+                 [:input :data]))
+      "Simply parses as nippy - for usage within a zip file"))

@@ -108,7 +108,8 @@
   (condp = (name doc-type)
     "json" #(charred/read-json % :key-fn keyword)
     "edn" (comp edn/read-string bytes->string)
-    "nippy" (comp ndio/str-> bytes->string)
+    "zippy" nippy/thaw
+    "nippy" (comp ndio/str-> bytes->string) ;; actually ndnippy!!
     "csv" (comp (ndcs/csv-row->data params) bytes->string)
     (throw (ex-info "Unknown doc-type" {:doc-type doc-type}))))
 
@@ -126,6 +127,7 @@
     (condp = doc-type
       :json charred/write-json-str
       :edn str
+      :zippy nippy/freeze
       :nippy ndio/->str
       :csv (ndcs/data->csv-row params)
       nil)))
@@ -187,7 +189,7 @@
         (.flush))
       (count data-str))))
 
-(def ^:private valid-zip-types #{:json :edn})
+(def ^:private valid-zip-types #{:json :edn :zippy}) ;; should :nippy -> :zippy
 
 (defn- infer-ziptype [doc-type]
   (if (valid-zip-types doc-type)
@@ -201,6 +203,7 @@
     "ndedn" :edn
     "csv" :csv
     "tsv" :tsv
+    "zippy" :zippy
     "zip" (infer-ziptype doc-type)
     :unknown))
 
