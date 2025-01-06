@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta20] - 2025-01-06
+
+"Happy New Year"-release!
+
+### Enhanced
+
+- Throwing a sane error, when opening an EMPTY database!
+
 ## [0.9.0-beta19] - 2024-10-25
 
 Support `nippy` based files in a `zip` based database - called `zippy`

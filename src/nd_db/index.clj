@@ -52,30 +52,34 @@
     ;; without parallelization: 18s
     ;; with: 6s (partition size 2048, fold size 32
     ;; that's around 2/3 less processing time
-    (let [[fline & rlines] (line-seq rdr)
-          [lines init-offset] (if skip-first?
-                                [rlines (inc (count (.getBytes ^String fline)))]
-                                [(cons fline rlines) 0])]
-      (with-meta
-        (->> lines
-             (partition-all 2048)
-             (reduce
-              (fn [[offset _ :as acc] part]
-                (let [res (->> part
-                               (into [])
-                               (r/fold 32
-                                       idx-combinr
-                                       (idx-reducr id-fn)))
-                      [s l] (->> res peek rest)]
-                  (-> acc
-                      (update 0 #(+ 1 % s l))
-                      (update 1 merge (reduce
-                                       (fn [a [id s l]]
-                                         (assoc a id [(+ offset s) l]))
-                                       {} res)))))
-              [init-offset {}])
-             second)
-        {:as-of (Instant/now)}))))
+    (let [[fline & rlines :as all-lines] (line-seq rdr)          ]
+      (if all-lines
+        (let [[lines init-offset] (if skip-first?
+                                    [rlines (inc (count (.getBytes ^String fline)))]
+                                    [(cons fline rlines) 0])]
+            (with-meta
+              (->> lines
+                   (partition-all 2048)
+                   (reduce
+                    (fn [[offset _ :as acc] part]
+                      (let [res (->> part
+                                     (into [])
+                                     (r/fold 32
+                                             idx-combinr
+                                             (idx-reducr id-fn)))
+                            [s l] (->> res peek rest)]
+                        (-> acc
+                            (update 0 #(+ 1 % s l))
+                            (update 1 merge (reduce
+                                             (fn [a [id s l]]
+                                               (assoc a id [(+ offset s) l]))
+                                             {} res)))))
+                    [init-offset {}])
+                   second)
+              {:as-of (Instant/now)}))
+        (throw (ex-info "Cannot use empty database!" {:filename filename
+                                                      :id-fn? (ifn? id-fn)
+                                                      :skip-first? skip-first?}))))))
 
 (defn reader
   "Returns a BufferedReader of the database index.

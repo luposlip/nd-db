@@ -4,7 +4,8 @@
             [nd-db
              [core :as nddb]
              [index :as sut]]
-            [nd-db.util :as ndut]))
+            [nd-db.util :as ndut])
+  (:import clojure.lang.ExceptionInfo))
 
 (def by-id #(Integer. ^String (second (re-find #"^\{\"id\":(\d+)" %))))
 
@@ -50,3 +51,9 @@
         new-index-keys (-> new-db :index deref keys set)]
     (is (ndut/db? new-db))
     (is (= new-id (new-index-keys new-id)))))
+
+(deftest empty-db
+  (is (thrown?
+       ExceptionInfo
+       (nddb/db :filename "resources/test/empty.ndnippy"
+                :id-path :id))))
