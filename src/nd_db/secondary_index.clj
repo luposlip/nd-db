@@ -4,8 +4,10 @@
             [nd-db
              [util :as ndut]
              [io :as ndio]
-             [core :as core]]
-            [clojure.data.avl :as avl])
+             [query :as ndq]
+             [index :as ndix]]
+            [clojure.data.avl :as avl]
+            [clojure.set :as set])
   (:import [java.io File]))
 
 (defn- extract-secondary-keys
@@ -50,7 +52,9 @@
   (when-let [sec-indexes (:secondary-indexes db)]
     (when-let [sec-index (get sec-indexes index-name)]
       (when-let [doc-ids (get sec-index value)]
-        (core/q db (vec doc-ids))))))
+        (let [index @(:index db)
+              doc-retriever (ndq/doc-retriever-fn db)]
+          (ndq/query-docs index doc-retriever (vec doc-ids)))))))
 
 (defn q-where
   "Query documents matching multiple criteria
@@ -66,9 +70,11 @@
                    matching-ids)
           ;; Find intersection of all matches
           common-ids (when (seq matches)
-                      (reduce clojure.set/intersection matches))]
+                      (reduce set/intersection matches))]
       (when (seq common-ids)
-        (core/q db (vec common-ids))))))
+        (let [index @(:index db)
+              doc-retriever (ndq/doc-retriever-fn db)]
+          (ndq/query-docs index doc-retriever (vec common-ids)))))))
 
 (defn q-range
   "Query documents by a range of values
@@ -80,9 +86,11 @@
         (let [matching-entries (subseq sec-index >= min-val <= max-val)
               all-doc-ids (reduce
                           (fn [ids [_ doc-id-set]]
-                            (clojure.set/union ids doc-id-set))
+                            (set/union ids doc-id-set))
                           #{}
                           matching-entries)]
           (when (seq all-doc-ids)
-            (core/q db (vec all-doc-ids))))))))
+            (let [index @(:index db)
+                  doc-retriever (ndq/doc-retriever-fn db)]
+              (ndq/query-docs index doc-retriever (vec all-doc-ids)))))))))
 

@@ -7,8 +7,8 @@
              [io :as ndio]
              [index :as ndix]
              [zip-index :as ndzx]
-             [util :as ndut]
-             [secondary-index :as secidx]]
+             [query :as ndq]
+             [util :as ndut]]
             [nd-db.core :as nddb])
   (:import [java.io File RandomAccessFile BufferedReader]))
 
@@ -102,44 +102,16 @@
       (persisted-db params)
       (raw-db params))))
 
-(defn- read-nd-doc
-  "Takes a doc-parser fn, a nd-db file and start and length.
-   Return the document."
-  [doc-parser ^File db-file start len extra]
-  {:pre [(ifn? doc-parser)]}
-  (when (and start len)
-    (let [bytes (byte-array len)]
-      (doto (RandomAccessFile. db-file "r")
-        (.seek start)
-        (.read bytes 0 len)
-        (.close))
-      (if extra
-        (doc-parser bytes extra)
-        (doc-parser bytes)))))
 
-(defmulti q
+(defn q
   "Queries a single or multiple docs from the database by a single or
   multiple IDs matching those from the `.nd*` database by `id-fn`.
   -  returns EDN for the matching document."
-  (fn [_ p]
-    (cond (sequential? p)
-          :sequential
-          p
-          :single
-          :else (throw (ex-info "Unsupported query parameter" {:parameter p})))))
-
-(defmethod q :single query-single
-  [db id]
-  {:pre [(ndut/db? db)
-         (not (nil? id))]}
-  (let [[start len extra] (get @(:index db) id)
-        nd-file (io/file ^String (:filename db))]
-    (read-nd-doc (:doc-parser db) nd-file start len extra)))
-
-(defmethod q :sequential query-multiple
-  [db ids]
-  {:pre [(sequential? ids)]}
-  (keep (partial q db) ids))
+  [db id-or-ids]
+  {:pre [(ndut/db? db)]}
+  (let [index @(:index db)
+        doc-retriever (ndq/doc-retriever-fn db)]
+    (ndq/query-docs index doc-retriever id-or-ids)))
 
 (defn or-q [dbs id-or-ids]
   {:pre [(every? ndut/db? dbs)]}
