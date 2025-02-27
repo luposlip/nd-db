@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file. This change
 - Timestamps for historical versions
 - Optimize (speed+size of) low level index format
 
+## [0.9.0-beta21] - 2025-02-27
+
+### Added
+
+- Support for secondary indexes, providing additional query capabilities:
+  - Query by non-unique attributes using `q-by`
+  - Combine multiple criteria with `q-where`
+  - Perform range queries with `q-range`
+- New test and example files demonstrating secondary index usage
+
 ## [0.9.0-beta20] - 2025-01-06
 
 "Happy New Year"-release!

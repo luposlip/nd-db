@@ -3,7 +3,7 @@
 # nd-db
 
 ```clojure
-[com.luposlip/nd-db "0.9.0-beta20"]
+[com.luposlip/nd-db "0.9.0-beta21"]
 ```
 
 _Newline Delimited (read-only) Databases!_
@@ -116,6 +116,42 @@ Also note that the return value is the same you should use to query the
 database. Which is why the input to `q` are `Integer` instances.
 
 Refer to the test for more details.
+
+## Secondary Indexes (since v0.9.0-beta21)
+
+In addition to the primary index (which maps unique IDs to document positions), nd-db now supports secondary indexes. These enable querying by non-unique attributes, combining multiple criteria, and performing range queries.
+
+To use secondary indexes, define extractor functions when creating the database:
+
+```clojure
+(def db
+  (nd-db.core/db
+   {:id-name "id"
+    :id-type :integer
+    :filename "resources/test/test.ndjson"
+    :secondary-indexes {:type #(get % "type")
+                        :status #(get % "status")
+                        :created-year #(when-let [created (get % "created_at")]
+                                        (Integer/parseInt (subs created 0 4)))}
+    :range-indexes #{:created-year}}))
+```
+
+Three query functions are available:
+
+1. Query by a single attribute:
+```clojure
+(nd-db.secondary-index/q-by db :type "invoice")
+```
+
+2. Query with multiple criteria (using intersection):
+```clojure
+(nd-db.secondary-index/q-where db {:type "invoice" :status "paid"})
+```
+
+3. Range queries (on attributes in `:range-indexes`):
+```clojure
+(nd-db.secondary-index/q-range db :created-year 2020 2022)
+```
 
 ## Laziness!
 
@@ -247,7 +283,7 @@ On the same M1 Pro as mentioned above, the index creation takes around 1 second,
 
 ## Copyright & License
 
-Copyright (C) 2019-2023 Henrik Mohr
+Copyright (C) 2019-2025 Henrik Mohr
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

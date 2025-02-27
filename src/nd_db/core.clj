@@ -7,9 +7,21 @@
              [io :as ndio]
              [index :as ndix]
              [zip-index :as ndzx]
-             [util :as ndut]]
+             [util :as ndut]
+             [secondary-index :as secidx]]
             [nd-db.core :as nddb])
   (:import [java.io File RandomAccessFile BufferedReader]))
+
+(defn- enhanced-db
+  "Adds secondary indexes to a database if specified"
+  [db]
+  (let [{:keys [secondary-indexes range-indexes]} db]
+    (if secondary-indexes
+      (let [docs (with-open [r (ndix/reader db)]
+                   (doall (lazy-docs db r)))]
+        (assoc db :secondary-indexes
+               (secidx/create-secondary-indexes docs secondary-indexes (or range-indexes #{}))))
+      db)))
 
 (defn- raw-db
   "Creates a database var which can be used to perform queries"
@@ -23,7 +35,8 @@
         (dissoc :id-fn)
         (assoc :version "0.9.0" ;; TODO version!
                :index index
-               :as-of (delay (-> @index meta :as-of))))))
+               :as-of (delay (-> @index meta :as-of)))
+        enhanced-db)))
 
 (defn- persisted-db [params]
   (let [serialized-filepath (ndio/serialized-db-filepath params)]
@@ -79,7 +92,9 @@
   :index-persist? - Set to false to inhibit storing the index on disk, defaults to true. Will also
                     inhibit the use of previously persisted indices!
   :filename       - .ndnippy input filename (full path)
-  :log-limit      - Read the documents log until and including this index (for versioning)"
+  :log-limit      - Read the documents log until and including this index (for versioning)
+  :secondary-indexes - Map of secondary index names to extractor functions
+  :range-indexes   - Set of secondary index names that should support range queries"
   [& _params]
   {:post [(ndut/db? %)]}
   (let [{:keys [index-persist?] :as params} (apply ndio/parse-params _params)]
