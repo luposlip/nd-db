@@ -1,3 +1,5 @@
+**Archived - moved to https://codeberg.org/luposlip/nd-db !**
+
 ![Clojure CI](https://github.com/luposlip/nd-db/workflows/Clojure%20CI/badge.svg?branch=main) [![Clojars Project](https://img.shields.io/clojars/v/com.luposlip/nd-db.svg)](https://clojars.org/com.luposlip/nd-db) [![Dependencies Status](https://versions.deps.co/luposlip/nd-db/status.svg)](https://versions.deps.co/luposlip/nd-db) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # nd-db
